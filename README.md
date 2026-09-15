@@ -205,13 +205,20 @@ ranked by the same mood that chose the dish.
 - **One result, one call.** It loads with the recommendation, for the headline
   dish only — never for the three under "also close", because four billed calls
   to furnish a glance is not a trade worth making.
-- **Browsing does not buy anything.** It auto-loads for the *first* answer of a
-  session only. Once somebody presses "show me something else" they are
-  browsing rather than deciding, and buying restaurants for a dish they are
-  about to skip past is paying for a choice nobody has made. Measured before
-  the rule existed: one answer and four presses cost five calls, a whole day's
-  allowance for one reader. After it, one. Browsed dishes get a button instead,
-  which costs nothing until it is pressed.
+- **Every dish gets one**, including dishes reached by pressing "show me
+  something else". A suggestion the reader cannot act on is half an answer, so
+  the places are shown rather than offered. That makes browsing expensive by
+  default — one answer and four presses was five billed calls — so the cost
+  comes out of it two ways that do not put anything in front of the reader:
+  - a **session memo**, so returning to a dish already seen is free. Process
+    memory, gone on reload, never written to storage, ten minute ceiling. This
+    is the temporary caching Google's terms allow, not the storing they forbid.
+    Verified: five city switches across two cities cost two calls, and the three
+    revisits cost nothing.
+  - a **dwell** before firing, so flicking past a dish never buys it. Somebody
+    moving through six suggestions is reading the names, not the addresses.
+    Verified: five rapid presses cost one call rather than five. A dish already
+    in the memo skips the wait, since it costs nothing anyway.
 - **It stays true.** Moving city, or the engine picking a different dish
   underneath the panel, leaves the list on screen wrong rather than merely stale,
   so it re-fetches — debounced by 600ms and skipped while a recommendation is

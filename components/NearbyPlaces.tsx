@@ -6,6 +6,26 @@ import type { Answers, City } from "@/lib/types";
 import type { InterestId } from "@/lib/interests";
 import type { CoordsStatus } from "./useCity";
 
+/**
+ * What this browser tab has already paid Google for, this visit.
+ *
+ * Google's terms forbid pre-fetching or storing Places content; what they
+ * permit is temporary caching so the same content is not fetched twice over.
+ * This is that and nothing more: process memory, gone on reload, never written
+ * to storage, and short enough that a restaurant's hours cannot go stale
+ * inside it. Its whole job is to make "show me something else" and then
+ * changing your mind back cost nothing the second time.
+ */
+const MEMO = new Map<string, { at: number; places: Place[]; from: "you" | "city" }>();
+const MEMO_MS = 10 * 60_000;
+
+/**
+ * How long a dish has to stay on screen before it is worth buying restaurants
+ * for. Somebody flicking through six suggestions is reading the names, not the
+ * addresses; somebody who stops has chosen to look.
+ */
+const DWELL_MS = 1_400;
+
 type State =
   | { kind: "loading" }
   | { kind: "done"; places: Place[]; from: "you" | "city" }
@@ -18,13 +38,13 @@ type State =
  * "also close": those are a list to glance at, and four billed calls to furnish
  * a glance is not a trade worth making.
  *
- * And only for the FIRST answer of a session. Once somebody starts pressing
- * "show me something else" they are browsing, not deciding, and buying a list
- * of restaurants for a dish they are about to skip past is paying for a choice
- * nobody has made. Measured before this rule existed: one answer and four
- * presses cost five calls, which is a whole day's allowance for one reader.
- * While browsing the panel offers instead of loading, and the offer costs
- * nothing until it is taken.
+ * Every dish gets one, including dishes arrived at by pressing "show me
+ * something else". A suggestion the reader cannot act on is half an answer, so
+ * the places are shown rather than offered. That makes browsing expensive by
+ * default - one answer and four presses was five billed calls - so the cost is
+ * taken out of it two other ways instead of by putting a gate in front of the
+ * reader: a session-length memo, so going back to a dish already seen is free,
+ * and a dwell before firing, so flicking past a dish never buys it.
  *
  * It stays true afterwards. Moving city, or the engine picking a different dish
  * underneath it, leaves the list on screen wrong rather than merely stale -
@@ -48,7 +68,6 @@ export default function NearbyPlaces({
   hunger,
   interests,
   busy,
-  auto,
   coordsStatus,
   onLocate,
 }: {
@@ -62,16 +81,11 @@ export default function NearbyPlaces({
   interests: InterestId[];
   /** a recommendation is in flight, so the dish underneath is about to change */
   busy: boolean;
-  /** the first answer of a session, rather than one arrived at by browsing */
-  auto: boolean;
   coordsStatus: CoordsStatus;
   /** asks for a coordinate without rewriting the city the reader chose */
   onLocate: () => void;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
-  // Which dish the reader has explicitly asked about, for the browsing case.
-  // Keyed by signature so asking about one dish does not answer for the next.
-  const [askedFor, setAskedFor] = useState<string | null>(null);
 
   // Primitives, so an unchanged city that arrives as a new object does not read
   // as a change and spend a call.
@@ -93,6 +107,14 @@ export default function NearbyPlaces({
 
   const look = useCallback(async () => {
     const ticket = ++run.current;
+
+    // Seen it already this visit. No call, no spinner, no wait.
+    const memo = MEMO.get(cacheKey.current);
+    if (memo && Date.now() - memo.at < MEMO_MS) {
+      setState({ kind: "done", places: memo.places, from: memo.from });
+      return;
+    }
+
     setState({ kind: "loading" });
     const settle = (s: State) => {
       if (ticket === run.current) setState(s);
@@ -149,11 +171,10 @@ export default function NearbyPlaces({
         });
         return;
       }
-      settle({
-        kind: "done",
-        places: data.places as Place[],
-        from: data.from === "you" ? "you" : "city",
-      });
+      const places = data.places as Place[];
+      const from = data.from === "you" ? "you" : "city";
+      MEMO.set(cacheKey.current, { at: Date.now(), places, from });
+      settle({ kind: "done", places, from });
     } catch {
       settle({ kind: "quiet", message: "Could not reach the restaurant list just now." });
     }
@@ -162,12 +183,12 @@ export default function NearbyPlaces({
   // What the list on screen is an answer to. When this changes, it is not.
   const signature = `${dishId}|${citySlug ?? ""}|${lat ?? ""},${lon ?? ""}`;
   const fetched = useRef<string | null>(null);
-
-  const wanted = auto || askedFor === signature;
+  // `look` reads the key through a ref so the memo lookup cannot land on the
+  // previous dish's entry during the render where the signature has changed.
+  const cacheKey = useRef(signature);
+  cacheKey.current = signature;
 
   useEffect(() => {
-    // Browsing. Nothing is bought until it is asked for.
-    if (!wanted) return;
     // Changing city re-runs the recommendation too, so the dish underneath is
     // about to move. Waiting for that avoids paying for the intermediate state
     // where the city is new and the dish is still the old city's.
@@ -178,16 +199,20 @@ export default function NearbyPlaces({
 
     if (fetched.current === signature) return;
 
-    // The first load should feel immediate. Everything after it is debounced,
-    // because the city picker is a native select and the heat slider fires on
-    // every step - without this, dragging either one buys a handful of calls.
-    const delay = fetched.current === null ? 0 : 600;
+    // The first load should feel immediate. Everything after it waits out the
+    // dwell, which is doing two jobs: the city picker is a native select and
+    // the heat slider fires on every step, so without it dragging either buys
+    // a handful of calls - and flicking through suggestions buys one each.
+    // A dish already in the memo skips the wait, since it costs nothing.
+    const cached = MEMO.get(signature);
+    const warm = cached && Date.now() - cached.at < MEMO_MS;
+    const delay = fetched.current === null || warm ? 0 : DWELL_MS;
     const timer = setTimeout(() => {
       fetched.current = signature;
       void look();
     }, delay);
     return () => clearTimeout(timer);
-  }, [wanted, busy, coordsStatus, signature, look]);
+  }, [busy, coordsStatus, signature, look]);
 
   // Offered once, alongside results that were measured from a city centre
   // rather than from the reader. Withdrawn the moment it is declined.
@@ -202,17 +227,6 @@ export default function NearbyPlaces({
         Use my exact location
       </button>
     ) : null;
-
-  if (!wanted) {
-    return (
-      <button
-        onClick={() => setAskedFor(signature)}
-        className="font-display mt-3 border border-ink px-6 py-3 text-base transition-colors hover:bg-sage-deep"
-      >
-        Who does this well near me?
-      </button>
-    );
-  }
 
   if (state.kind === "loading") {
     return <p className="mt-6 text-sm text-ink-soft">Looking around{cityName ? ` ${cityName}` : ""}.</p>;

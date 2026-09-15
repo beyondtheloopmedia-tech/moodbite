@@ -400,10 +400,6 @@ export default function MoodQuiz() {
               hunger={answers.hunger ?? null}
               interests={interests}
               busy={busy}
-              // Nothing passed over yet means this is the answer, not a page
-              // of browsing. A city or preference change clears `seen`, so it
-              // counts as a fresh answer too.
-              auto={seen.length === 0}
               coordsStatus={coordsStatus}
               onLocate={refineCoords}
             />
