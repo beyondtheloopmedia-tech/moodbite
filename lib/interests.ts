@@ -1,7 +1,6 @@
 import type { Vector } from "./types";
 
 export type InterestId =
-  | "spice"
   | "sweet"
   | "light"
   | "adventurous"
@@ -11,6 +10,11 @@ export type InterestId =
 
 /**
  * Standing preferences, as opposed to how you happen to feel tonight.
+ *
+ * Heat deliberately has no entry here. It used to ("Chilli, always"), which
+ * meant two controls in the same dialog arguing with each other: a binary
+ * nudge alongside a three-level tolerance. `profiles.spice_level` sets the
+ * heat baseline directly and is strictly the better instrument.
  *
  * They are expressed in the same six axes as everything else, so a profile is
  * not a new system bolted on: it is a nudge to the same target vector the six
@@ -24,13 +28,6 @@ export const INTERESTS: {
   target: Partial<Vector>;
   weights: Partial<Vector>;
 }[] = [
-  {
-    id: "spice",
-    label: "Chilli, always",
-    blurb: "Bias towards food that fights back.",
-    target: { heat: 0.22 },
-    weights: { heat: 0.5 },
-  },
   {
     id: "sweet",
     label: "Sweet tooth",

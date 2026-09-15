@@ -141,7 +141,12 @@ actually reads:
 | Anything off the table? | `diet`, a hard filter |
 | How much heat do you take? | the baseline of the heat axis, which was 0.45 for every person alive |
 | Anything you would rather never see? | excludes whole cuisines outright |
-| Anything you lean towards? | the six standing preferences |
+| Anything you lean towards? | the standing preferences |
+
+Heat deliberately has no entry in the last row. It used to - "Chilli, always" -
+which put two controls in the same dialog arguing with each other: a binary
+nudge beside a three-level tolerance. The tolerance is the better instrument,
+so the nudge went.
 
 The last two are the ones that were missing. The heat axis had a single
 hardcoded starting point for everybody, and the engine could cap two dishes per
