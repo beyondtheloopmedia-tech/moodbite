@@ -173,6 +173,44 @@ export default async function AdminPage() {
   const posts = (postRows ?? []) as PostRow[];
   const restaurants = (restaurantRows ?? []) as RestaurantRow[];
 
+  /*
+   * A write test run on the SERVER, with the same session.
+   *
+   * Every attempt so far has gone out from the browser, and every layer there
+   * has at some point reported something untrue. The server holds the same
+   * session through cookies but is an entirely different client, so if it can
+   * write a listing and the browser cannot, that narrows the problem to the
+   * browser; if neither can, the problem is the database and the browser was
+   * never the place to look.
+   *
+   * Only runs while there are no listings, so it disappears the moment the bug
+   * is fixed rather than testing forever.
+   */
+  let serverProbe: string | null = null;
+  if (restaurants.length === 0) {
+    const slug = `zz-server-probe-${Date.now()}`;
+    const ins = await supabase
+      .from("restaurants")
+      .insert({ slug, name: "Server probe", city: "hyderabad", listed: false });
+    if (ins.error) {
+      serverProbe = `insert FAILED [${ins.error.code}] ${ins.error.message}`;
+    } else {
+      const back = await supabase.from("restaurants").select("id").eq("slug", slug);
+      serverProbe = `insert ok · read back ${back.data?.length ?? 0} row(s)${
+        back.error ? ` [${back.error.code}] ${back.error.message}` : ""
+      }`;
+      await supabase.from("restaurants").delete().eq("slug", slug);
+    }
+    // Recorded where it can be read without anybody relaying it.
+    await supabase.from("recommendation_events").insert({
+      user_id: auth.user.id,
+      dish_id: `zzdiag:SERVER ${serverProbe}`.slice(0, 400),
+      action: "shown",
+      rank: 1,
+      shortlist_id: crypto.randomUUID(),
+    });
+  }
+
   const now = Date.now();
   const since = (days: number) =>
     rows.filter((p) => now - new Date(p.created_at).getTime() < days * 864e5).length;
@@ -560,6 +598,11 @@ export default async function AdminPage() {
             <span className="text-ink-soft"> — nothing saved yet</span>
           )}
         </p>
+        {serverProbe && (
+          <p className="mt-3 border-l-2 border-chilli pl-3 text-sm text-ink-soft">
+            Server-side write test: {serverProbe}
+          </p>
+        )}
         <RestaurantManager initial={restaurants} />
       </section>
 
