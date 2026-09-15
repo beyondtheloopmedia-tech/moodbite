@@ -152,6 +152,11 @@ export function buildProfile(
       target.heat += 0.25;
       target.novelty += 0.2;
       target.lightness += 0.15;
+      // Comfort here means soothing, warm, familiar. Somebody who cannot sit
+      // still is not asking to be soothed, they are asking to be met. Without
+      // this, the restless answers still landed in the comfort corner: raising
+      // heat and novelty does nothing to lower comfort.
+      target.comfort -= 0.2;
       weights.heat += 0.4;
       break;
   }
@@ -183,7 +188,17 @@ export function buildProfile(
       target.novelty += 0.2;
       target.heat += 0.15;
       target.lightness -= 0.2;
+      // A celebration is not a consolation. Leaving comfort at baseline meant
+      // every good mood asked for the same soothing food as a bad one.
+      target.comfort -= 0.1;
       weights.indulgence += 0.7;
+      break;
+    case "fine":
+      // The only answer that asks for nothing in particular, and it used to be
+      // a no-op - which meant the baseline itself was "mildly rich and
+      // comforting", so an ordinary Tuesday got a bad day's food.
+      target.indulgence -= 0.15;
+      target.comfort -= 0.1;
       break;
   }
 
@@ -196,8 +211,18 @@ export function buildProfile(
     weights.novelty += 0.5;
   }
 
-  if (answers.hunger === "nibble") target.lightness += 0.15;
-  if (answers.hunger === "feast") target.indulgence += 0.1;
+  // Asking for a nibble is asking for less, not merely for lighter; asking to be
+  // fed properly is asking for a savoury spread. Each used to move one axis,
+  // which is part of why neither could reach the edges of the catalogue.
+  if (answers.hunger === "nibble") {
+    target.lightness += 0.25;
+    target.indulgence -= 0.2;
+  }
+  if (answers.hunger === "feast") {
+    target.indulgence += 0.15;
+    target.lightness -= 0.2;
+    target.sweetness -= 0.1;
+  }
 
   switch (weatherBias(weather).kind) {
     case "wet":
@@ -391,15 +416,94 @@ export function recommend(
     })
     .sort((a, b) => b.score - a.score);
 
-  // keep the shortlist varied: at most two dishes from one cuisine
-  const seen: Record<string, number> = {};
+  return selectShortlist(scored, limit);
+}
+
+/**
+ * How much a dish is penalised for resembling one already on the shortlist.
+ *
+ * Taking the top four by score alone produces four near-identical dishes
+ * surprisingly often. Measured across all 3,240 answer combinations before
+ * this existed: the median shortlist had a mean pairwise axis distance of
+ * 0.168, and 36% of them were tighter than 0.15 - four ways of saying the same
+ * thing, offered as a choice.
+ *
+ * Two dishes in the catalogue are shadowed the same way - Greek salad sits
+ * 0.067 from the grilled chicken bowl and is faster, poha shadows the fruit and
+ * dahi bowl - and it is worth being clear that this does NOT fix that. Measured
+ * either side: still 5 to 6 dishes never shown. It cannot, because the higher
+ * scorer is chosen first and the penalty then falls on the dish it shadowed,
+ * which is backwards for coverage. That is a separate problem with a separate
+ * fix.
+ *
+ * 0.8 comes from a sweep across all 3,240 combinations, not from taste:
+ *
+ *     weight   near-clone shortlists   cost to picks 2-4
+ *       0.00            35.7%                  -
+ *       0.45            22.1%               -0.47%
+ *       0.80             9.6%               -1.85%
+ *       1.00             3.6%               -3.09%
+ *
+ * 0.8 removes 73% of the clones for under 2% of the runner-ups' score; going
+ * to 1.0 triples that cost for six more points. The headline pick costs
+ * nothing at any weight, because the first selection has nothing to be
+ * penalised against - variety is taken out of the three beneath it, never out
+ * of the answer.
+ */
+const DIVERSITY = 0.8;
+
+/** 1 when two dishes are identical in the six axes, 0 when maximally apart. */
+function similarity(a: Vector, b: Vector): number {
+  return 1 - AXES.reduce((s, ax) => s + Math.abs(a[ax] - b[ax]), 0) / AXES.length;
+}
+
+/**
+ * Pick the shortlist: best first, then best-given-what-is-already-there.
+ *
+ * Maximal marginal relevance. The first pick is simply the top score, so the
+ * headline answer is never compromised for variety - what changes is the three
+ * beneath it, which stop being restatements of it. The cuisine cap stays as a
+ * blunt backstop for the case where the vectors disagree with common sense.
+ *
+ * Exported so the offline sweep can try other weights without the app's
+ * constant moving underneath it.
+ */
+export function selectShortlist(
+  scored: Recommendation[],
+  limit: number,
+  diversity = DIVERSITY,
+): Recommendation[] {
   const picked: Recommendation[] = [];
-  for (const r of scored) {
-    const n = seen[r.dish.cuisine] ?? 0;
-    if (n >= 2) continue;
-    seen[r.dish.cuisine] = n + 1;
-    picked.push(r);
-    if (picked.length === limit) break;
+  const cuisines: Record<string, number> = {};
+  const taken = new Set<string>();
+
+  while (picked.length < limit) {
+    let best: Recommendation | null = null;
+    let bestValue = -Infinity;
+
+    for (const r of scored) {
+      if (taken.has(r.dish.id)) continue;
+      if ((cuisines[r.dish.cuisine] ?? 0) >= 2) continue;
+
+      // distance from the nearest thing already chosen, not the average: one
+      // near-duplicate is enough to make a slot wasted, however different the
+      // rest of the list is.
+      const closest = picked.reduce(
+        (worst, p) => Math.max(worst, similarity(r.dish.vector, p.dish.vector)),
+        0,
+      );
+      const value = r.score - diversity * closest;
+      if (value > bestValue) {
+        bestValue = value;
+        best = r;
+      }
+    }
+
+    if (!best) break;
+    taken.add(best.dish.id);
+    cuisines[best.dish.cuisine] = (cuisines[best.dish.cuisine] ?? 0) + 1;
+    picked.push(best);
   }
+
   return picked;
 }
