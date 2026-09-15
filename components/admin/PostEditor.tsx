@@ -71,15 +71,29 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
       published: draft.published,
     };
 
-    const { data, error } = draft.id
-      ? await supabase.from("posts").update(fields).eq("id", draft.id).select().single()
-      : await supabase.from("posts").insert(fields).select().single();
+    // See RestaurantManager: without the finally, a thrown error leaves the
+    // button stuck on "Saving" and says nothing at all.
+    let data: unknown = null;
+    let error: { message: string; code?: string } | null = null;
+    try {
+      const res = draft.id
+        ? await supabase.from("posts").update(fields).eq("id", draft.id).select().single()
+        : await supabase.from("posts").insert(fields).select().single();
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = { message: e instanceof Error ? e.message : "The request did not complete." };
+    } finally {
+      setSaving(false);
+    }
 
-    setSaving(false);
     if (error) {
+      console.error("moodbite: saving a post failed", error);
       // The unique index on slug is the one a writer will actually hit.
       setProblem(
-        error.code === "23505" ? "Another post already uses that address." : error.message,
+        error.code === "23505"
+          ? "Another post already uses that address."
+          : `${error.message}${error.code ? ` (${error.code})` : ""}`,
       );
       return;
     }

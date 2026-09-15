@@ -124,14 +124,30 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
       listed: draft.listed,
     };
 
-    const { data, error } = draft.id
-      ? await supabase.from("restaurants").update(fields).eq("id", draft.id).select().single()
-      : await supabase.from("restaurants").insert(fields).select().single();
+    // try/finally, because without it a thrown error - a dropped connection,
+    // anything the client raises rather than returns - skips every line below
+    // and leaves the button disabled reading "Saving" with nothing said. A
+    // save that fails silently is worse than one that fails loudly.
+    let data: unknown = null;
+    let error: { message: string; code?: string; details?: string } | null = null;
+    try {
+      const res = draft.id
+        ? await supabase.from("restaurants").update(fields).eq("id", draft.id).select().single()
+        : await supabase.from("restaurants").insert(fields).select().single();
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = { message: e instanceof Error ? e.message : "The request did not complete." };
+    } finally {
+      setSaving(false);
+    }
 
-    setSaving(false);
     if (error) {
+      console.error("moodbite: saving a listing failed", error);
       setProblem(
-        error.code === "23505" ? "Another listing already uses that address." : error.message,
+        error.code === "23505"
+          ? "Another listing already uses that address."
+          : `${error.message}${error.code ? ` (${error.code})` : ""}`,
       );
       return;
     }
@@ -143,6 +159,29 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
       `Saved. ${row.lat === null || row.lon === null ? 'No coordinates, so no review of this can ever be marked "was there".' : "Reviews written at the door can be marked as such."}`,
     );
     setDraft(null);
+  }
+
+  /**
+   * What this browser tab actually is, as far as the database is concerned.
+   *
+   * The admin page renders from the server session; every write on it goes
+   * through a separate client that reads the session from cookies. Those two
+   * can disagree - a page that renders for an admin while writes go out as
+   * anon looks exactly like a save that does nothing - and nothing on screen
+   * has been able to tell them apart.
+   */
+  async function checkAccess() {
+    if (!supabase) return;
+    setProblem(null);
+    const { data: auth } = await supabase.auth.getUser();
+    const { data: admin, error } = await supabase.rpc("is_admin");
+    setNotice(
+      `This tab: ${auth.user ? `signed in as ${auth.user.email ?? auth.user.id}` : "NOT SIGNED IN"}` +
+        ` · is_admin() says ${error ? `error — ${error.message}` : String(admin)}` +
+        (auth.user && admin === true
+          ? " · writes should work"
+          : " · writes will be refused, which is why nothing saves"),
+    );
   }
 
   if (!supabase) return <p className="mt-3 text-sm text-ink-soft">Supabase is not configured.</p>;
@@ -253,10 +292,16 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
   return (
     <div className="mt-4">
       {notice && <p className="mb-4 border-l-2 border-ink pl-3 text-sm text-ink-soft">{notice}</p>}
-      <button onClick={() => { setNotice(null); setDraft({ ...BLANK }); }}
-        className="font-display border border-ink px-5 py-2.5 text-base transition-colors hover:bg-sage-deep">
-        Add a restaurant
-      </button>
+      {problem && <p className="mb-4 text-sm text-chilli">{problem}</p>}
+      <div className="flex flex-wrap items-center gap-4">
+        <button onClick={() => { setNotice(null); setDraft({ ...BLANK }); }}
+          className="font-display border border-ink px-5 py-2.5 text-base transition-colors hover:bg-sage-deep">
+          Add a restaurant
+        </button>
+        <button onClick={checkAccess} className="text-sm text-ink-soft underline underline-offset-4">
+          Check my access
+        </button>
+      </div>
 
       {rows.length === 0 ? (
         <p className="mt-4 text-sm text-ink-soft">Nothing listed yet.</p>
