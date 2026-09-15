@@ -321,9 +321,9 @@ export function recommend(
   spice: SpiceLevel | null = null,
   avoidCuisines: string[] = [],
   exclude: string[] = [],
-  signals: Map<string, number> | null = null,
-  fatigue: Map<string, number> | null = null,
+  learned: Learned = {},
 ): Recommendation[] {
+  const { signals = null, fatigue = null, taste = null } = learned;
   const { target, weights, maxEta } = buildProfile(
     answers,
     heatOverride,
@@ -332,6 +332,16 @@ export function recommend(
     activity,
     spice,
   );
+  // A standing taste, learned from what this person actually chose rather than
+  // from what they told us. Applied to the target the answers produced, so it
+  // bends tonight's request rather than replacing it.
+  if (taste) {
+    for (const axis of AXES) {
+      const d = taste[axis];
+      if (d) target[axis] = clamp(target[axis] + d);
+    }
+  }
+
   // "How hungry?" is answered for one person. When people are over, the order
   // is for several, so the wanted portion moves up a step. Without this the
   // company activity did nothing at all unless "feed me properly" had already
@@ -494,6 +504,23 @@ export function recommend(
  * penalised against - variety is taken out of the three beneath it, never out
  * of the answer.
  */
+/**
+ * Everything the engine knows that was not typed in tonight.
+ *
+ * Bundled rather than added to the parameter list, which had reached fourteen
+ * positional arguments and was one more away from being unreadable. These three
+ * also belong together conceptually: all are evidence rather than input, all
+ * are optional, and all default to changing nothing.
+ */
+export interface Learned {
+  /** per-dish click lift across everybody, position-debiased. See dish_signals. */
+  signals?: Map<string, number> | null;
+  /** what this reader has been shown lately, 0 fresh to 1 tired */
+  fatigue?: Map<string, number> | null;
+  /** what this reader reaches for, as deltas on the six axes */
+  taste?: Partial<Vector> | null;
+}
+
 const DIVERSITY = 0.8;
 
 /**

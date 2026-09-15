@@ -6,6 +6,8 @@ import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
 import { dishSignals } from "@/lib/signals";
 import { dishFatigue, fatigueFrom } from "@/lib/fatigue";
+import { tasteFrom } from "@/lib/taste";
+import { DISHES } from "@/lib/dishes";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import {
   SLOTS,
@@ -16,6 +18,36 @@ import {
   type Slot,
   type SpiceLevel,
 } from "@/lib/types";
+
+const DISH_BY_ID = new Map(DISHES.map((d) => [d.id, d]));
+
+/**
+ * What this account has reached for, over a longer window than fatigue uses.
+ *
+ * Fatigue asks "have I just had this" and wants a fortnight. Taste asks "what
+ * is this person like" and wants as much as it can get, because three months of
+ * choices say something a fortnight cannot.
+ */
+async function readTaste(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServer>>>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("recommendation_events")
+    .select("dish_id, action")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+
+  if (error) {
+    console.warn("moodbite: could not read taste", error.message);
+    return null;
+  }
+  return tasteFrom(
+    (data ?? []).map((e) => ({ dish: e.dish_id, clicked: e.action === "clicked" })),
+    DISH_BY_ID,
+  )?.delta ?? null;
+}
 
 export async function POST(req: Request) {
   let body: {
@@ -100,9 +132,14 @@ export async function POST(req: Request) {
   // own and sends it - see lib/device.ts for why it is never stored here.
   // Untrusted either way, and harmless: inflating it only buries dishes for
   // yourself, and emptying it only means seeing repeats.
+  // Learned from this account's own history, which is why it needs the sign-in:
+  // a taste belongs to a person, and a device is not one.
+  let taste: Awaited<ReturnType<typeof readTaste>> = null;
+
   let fatigue: Map<string, number> | null = null;
   if (auth?.user && supabase) {
     fatigue = await dishFatigue(supabase, auth.user.id);
+    taste = await readTaste(supabase, auth.user.id);
   } else if (Array.isArray(body.seen)) {
     const sightings = body.seen
       .filter(
@@ -134,8 +171,7 @@ export async function POST(req: Request) {
       spice,
       avoidCuisines,
       skip,
-      signals,
-      fatigue,
+      { signals, fatigue, taste },
     );
 
   let results = ask(exclude);
