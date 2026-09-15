@@ -18,14 +18,25 @@ export type CityStatus =
 /**
  * Turns a browser coordinate into one of the cities we actually have links for.
  *
- * The coordinate never leaves the device: the city list ships with the app and
- * the match is a distance calculation, so there is no geocoding service in the
- * path and no reason to send anyone's location anywhere.
+ * Choosing the city needs no network at all: the city list ships with the app
+ * and the match is a distance calculation, so there is no geocoding service in
+ * that path.
+ *
+ * `coords` is the one exception, and it is deliberately blunted. The precise
+ * reading is rounded to two decimal places inside the callback below and the
+ * exact figure is discarded there and then, so it never reaches React state,
+ * a request, or anywhere else. Two decimal places is about a kilometre: enough
+ * to search for restaurants around someone, not enough to find their flat. It
+ * is sent only when they ask for nearby places, and only ever to our own
+ * server.
  */
+const COARSE = 100; // two decimal places, roughly a kilometre
+
 export function useCity() {
   const [city, setCity] = useState<City | null>(null);
   const [status, setStatus] = useState<CityStatus>("idle");
   const [km, setKm] = useState<number | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   // a city picked by hand outlives the session; a located one is re-read each time
   useEffect(() => {
@@ -47,6 +58,8 @@ export function useCity() {
     setCity(found);
     setStatus("chosen");
     setKm(null);
+    // naming a city overrides wherever the device thinks it is
+    setCoords(null);
     try {
       localStorage.setItem(STORAGE_KEY, found.slug);
     } catch {
@@ -67,6 +80,11 @@ export function useCity() {
           pos.coords.longitude,
         );
         setKm(distance);
+        // rounded here, at the only point the precise value exists
+        setCoords({
+          lat: Math.round(pos.coords.latitude * COARSE) / COARSE,
+          lon: Math.round(pos.coords.longitude * COARSE) / COARSE,
+        });
         if (near) {
           setCity(match);
           setStatus("located");
@@ -81,5 +99,5 @@ export function useCity() {
     );
   }, []);
 
-  return { city, status, km, locate, choose, cities: CITIES, radiusKm: LOCAL_RADIUS_KM };
+  return { city, status, km, coords, locate, choose, cities: CITIES, radiusKm: LOCAL_RADIUS_KM };
 }

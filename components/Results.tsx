@@ -17,6 +17,7 @@ export default function Results({
   weatherNote,
   onOrder,
   cityBar,
+  nearby,
   heat,
   onHeat,
   onRestart,
@@ -28,6 +29,8 @@ export default function Results({
   weatherNote: string | null;
   onOrder: (dishId: string) => void;
   cityBar: ReactNode;
+  /** the nearby-restaurants panel for the top dish, built by the caller */
+  nearby?: ReactNode;
   heat: number | null;
   onHeat: (v: number) => void;
   onRestart: () => void;
@@ -101,6 +104,8 @@ export default function Results({
           Find it on Zomato
         </a>
       </div>
+
+      {nearby}
 
       <div className="mt-10 max-w-sm border-t border-ink/20 pt-6">
         <label htmlFor="heat" className="text-sm text-ink-soft">

@@ -186,6 +186,46 @@ so a row is only ever visible to the user it belongs to, with no read-all path, 
 the event log has no update or delete policy — a log that can be rewritten is not
 evidence of anything.
 
+## Where to actually get it
+
+The engine answers *what to eat*. Google answers *where*, and until now the
+answer ended at a Zomato delivery page. Under the headline dish there is now one
+button, **Who does this well near me?**, which returns five real restaurants
+ranked by the same mood that chose the dish.
+
+- **Ratings have to be earned.** A 4.8 from eleven reviews is not better than a
+  4.3 from eight hundred, and a raw sort by rating puts the eleven first every
+  time. Each rating is pulled toward the mean by a prior worth fifty reviews, so
+  volume buys the right to a high average. Google's own figure is what gets
+  displayed; the shrunk one only decides the order.
+- **Patience picks the trade-off.** It is the one answer already about distance
+  in disguise — somebody who will not wait half an hour for delivery will not
+  drive across town either — so it sets how hard proximity competes with
+  quality. "Watching the spend" then pushes the price band down.
+- **One tap, one call.** Every lookup is billed, so nothing is fetched for a
+  shortlist nobody asked to see: only for the one dish being considered, and only
+  when asked.
+- **The cap is a precondition, not a refinement.** Asking for ratings puts the
+  call in Google's Enterprise tier: 1,000 free a month, then about $35 per 1,000.
+  `0009_places_quota.sql` holds a global monthly cap of 900 and a per-client
+  daily cap of 8, both server side because the anon key is public. Run out and
+  the panel says so and the order links carry on working. With no Supabase there
+  is nowhere to count, so Google is never called at all.
+- **The coordinate is blunted at source.** `useCity` rounds the browser's
+  reading to two decimal places — about a kilometre — inside the geolocation
+  callback, and the exact figure is discarded there. Enough to search around
+  somebody, not enough to find their flat. Pick a city by hand instead and only
+  the city centroid is used.
+
+Two fields were deliberately left out of the request. `delivery`/`takeout`/
+`dineIn` and `servesVegetarianFood` would promote the call to Google's
+Enterprise+Atmosphere tier for questions that proximity and an already
+diet-filtered dish answer well enough. `lib/places.ts` says which tier each
+field sits in; check before adding one.
+
+Set `GOOGLE_PLACES_KEY` (see `.env.example`) to switch it on. Server side only —
+a Places key in the browser bundle gets scraped and billed.
+
 ## What the evidence changed
 
 Five sources were read against the engine. Three produced changes, one confirmed

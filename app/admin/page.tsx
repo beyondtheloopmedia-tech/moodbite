@@ -91,7 +91,7 @@ export default async function AdminPage() {
 
   if (!me?.is_admin) return <Denied reason="This account is not an admin." />;
 
-  const [{ data: profiles }, { data: events }] = await Promise.all([
+  const [{ data: profiles }, { data: events }, { data: quota }] = await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -106,10 +106,14 @@ export default async function AdminPage() {
       )
       .order("created_at", { ascending: false })
       .limit(5000),
+    // Empty for a non-admin: the function checks is_admin() itself rather than
+    // trusting the guard above.
+    supabase.rpc("places_quota_status"),
   ]);
 
   const rows = profiles ?? [];
   const log = events ?? [];
+  const places = quota?.[0] ?? null;
 
   const now = Date.now();
   const since = (days: number) =>
@@ -232,6 +236,30 @@ export default async function AdminPage() {
                   <Stat key={slug} label={CITY_NAME.get(slug) ?? slug} value={n} />
                 ))}
               </ul>
+            </div>
+          )}
+
+          {places && (
+            <div>
+              <h3 className="text-sm text-ink-soft">Google Places budget</h3>
+              <ul className="mt-1">
+                <Stat
+                  label="Used this month"
+                  value={places.used_this_month}
+                  of={places.monthly_cap}
+                />
+                <Stat label="Used today" value={places.used_today} />
+                <Stat
+                  label="Left this month"
+                  value={Math.max(0, places.monthly_cap - places.used_this_month)}
+                />
+              </ul>
+              <p className="mt-2 text-xs text-ink-soft">
+                The cap sits under Google&apos;s 1,000 free calls a month, so this
+                feature cannot bill you as configured. Raising it means choosing to
+                pay about ₹3 a lookup; the number lives in
+                0009_places_quota.sql.
+              </p>
             </div>
           )}
         </div>

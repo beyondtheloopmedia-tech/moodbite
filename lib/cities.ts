@@ -48,7 +48,7 @@ export const findCity = (slug: string) => CITIES.find((c) => c.slug === slug);
  */
 export const LOCAL_RADIUS_KM = 120;
 
-function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number) {
+export function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number) {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(bLat - aLat);
   const dLon = toRad(bLon - aLon);

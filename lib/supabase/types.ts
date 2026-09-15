@@ -102,6 +102,12 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean };
+      /** 'ok', 'month' (global budget spent) or 'day' (this client's share) */
+      claim_places_call: { Args: { p_bucket: string }; Returns: string };
+      places_quota_status: {
+        Args: Record<string, never>;
+        Returns: { used_this_month: number; monthly_cap: number; used_today: number }[];
+      };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

@@ -12,6 +12,7 @@ import SignInModal, { markSignInPromptSeen, signInPromptSeen } from "./SignInMod
 import ProfileSetup from "./ProfileSetup";
 import ActivityPicker from "./ActivityPicker";
 import AccountBar from "./AccountBar";
+import NearbyPlaces from "./NearbyPlaces";
 import { useSession } from "./useSession";
 import { useEventLog } from "./useEventLog";
 import { slotForHour } from "@/lib/scoring";
@@ -89,7 +90,7 @@ export default function MoodQuiz() {
   const [heat, setHeat] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { city, status, km, locate, choose: chooseCity, cities, radiusKm } = useCity();
+  const { city, status, km, coords, locate, choose: chooseCity, cities, radiusKm } = useCity();
   const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
   const {
@@ -342,6 +343,20 @@ export default function MoodQuiz() {
               radiusKm={radiusKm}
               onLocate={locate}
               onChoose={chooseCity}
+            />
+          }
+          nearby={
+            <NearbyPlaces
+              // a new dish is a new question, so the panel starts closed again
+              key={`${results[0].dish.id}|${city?.slug ?? ""}`}
+              dishId={results[0].dish.id}
+              dishName={results[0].dish.name}
+              city={city}
+              coords={coords}
+              patience={answers.patience ?? null}
+              mood={answers.mood ?? null}
+              hunger={answers.hunger ?? null}
+              interests={interests}
             />
           }
           heat={heat}
