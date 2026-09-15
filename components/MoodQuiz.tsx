@@ -26,9 +26,9 @@ const QUESTIONS: {
 }[] = [
   {
     key: "energy",
-    question: "How much is left in the tank?",
+    question: "How's your energy right now?",
     options: [
-      { value: "empty", label: "Running on empty" },
+      { value: "empty", label: "Completely drained" },
       { value: "steady", label: "Steady enough" },
       { value: "wired", label: "Wired, can't sit still" },
     ],

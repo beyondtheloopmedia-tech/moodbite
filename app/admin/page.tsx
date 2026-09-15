@@ -1,6 +1,7 @@
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { DISHES } from "@/lib/dishes";
 import { CITIES } from "@/lib/cities";
+import { INTERESTS } from "@/lib/interests";
 import { DAY_PARTS } from "@/lib/daypart";
 import ResendLink from "@/components/admin/ResendLink";
 
@@ -10,6 +11,7 @@ export const metadata = { title: "Moodbite admin", robots: { index: false, follo
 const DISH_NAME = new Map(DISHES.map((d) => [d.id, d.name]));
 
 const CITY_NAME = new Map(CITIES.map((c) => [c.slug, c.name]));
+const INTEREST_LABEL = new Map(INTERESTS.map((i) => [i.id as string, i.label]));
 const DAY_PART_ORDER = DAY_PARTS.map((d) => d.id);
 
 const LABEL: Record<string, string> = {
@@ -92,7 +94,8 @@ export default async function AdminPage() {
   const [{ data: profiles }, { data: events }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, email, interests, home_city, diet, created_at")
+      // No email selected. The panel cannot leak what it never asks for.
+      .select("interests, home_city, diet, spice_level, is_pro, created_at")
       .order("created_at", { ascending: false })
       .limit(200),
     supabase
@@ -106,6 +109,25 @@ export default async function AdminPage() {
 
   const rows = profiles ?? [];
   const log = events ?? [];
+
+  const now = Date.now();
+  const since = (days: number) =>
+    rows.filter((p) => now - new Date(p.created_at).getTime() < days * 864e5).length;
+  const recent7 = since(7);
+  const recent30 = since(30);
+  const proCount = rows.filter((p) => p.is_pro).length;
+  const withCity = rows.filter((p) => p.home_city).length;
+  const withDiet = rows.filter((p) => p.diet).length;
+  const withSpice = rows.filter((p) => p.spice_level).length;
+  const withInterests = rows.filter((p) => (p.interests?.length ?? 0) > 0).length;
+
+  const interestTally = new Map<string, number>();
+  for (const p of rows) for (const i of p.interests ?? []) interestTally.set(i, (interestTally.get(i) ?? 0) + 1);
+  const interestCounts = [...interestTally.entries()].sort((a, b) => b[1] - a[1]);
+
+  const cityTally = new Map<string, number>();
+  for (const p of rows) if (p.home_city) cityTally.set(p.home_city, (cityTally.get(p.home_city) ?? 0) + 1);
+  const cityCounts = [...cityTally.entries()].sort((a, b) => b[1] - a[1]);
 
   const byMood = groupBy(log, (e: { mood: string | null }) => e.mood);
   const byCity = groupBy(log, (e: { city: string | null }) => e.city);
@@ -159,40 +181,52 @@ export default async function AdminPage() {
       <section className="mt-12">
         <h2 className="font-display text-xl">Sign-ups</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          {rows.length} account{rows.length === 1 ? "" : "s"}, newest first.
+          Counts only. Individual accounts are not listed, and the query does not
+          ask for email addresses, so this page cannot show who anyone is.
         </p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-sm">
-            <thead>
-              <tr className="border-b border-ink/20 text-left text-ink-soft">
-                <th className="py-2 font-normal">Email</th>
-                <th className="py-2 font-normal">Joined</th>
-                <th className="py-2 font-normal">City</th>
-                <th className="py-2 font-normal">Preferences</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-b border-ink/10">
-                  <td className="py-2.5 pr-4">{p.email ?? <span className="text-ink-soft">—</span>}</td>
-                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="py-2.5 pr-4 text-ink-soft">{p.home_city ?? "—"}</td>
-                  <td className="py-2.5 text-ink-soft">
-                    {p.interests?.length ? p.interests.join(", ") : "none set"}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-4 text-ink-soft">
-                    No accounts yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+        <div className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          <div>
+            <h3 className="text-sm text-ink-soft">Accounts</h3>
+            <ul className="mt-1">
+              <Stat label="Total" value={rows.length} />
+              <Stat label="Joined in the last 7 days" value={recent7} />
+              <Stat label="Joined in the last 30 days" value={recent30} />
+              <Stat label="Pro" value={proCount} />
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="text-sm text-ink-soft">Profile completion</h3>
+            <ul className="mt-1">
+              <Stat label="Set a home city" value={withCity} of={rows.length} />
+              <Stat label="Set a diet" value={withDiet} of={rows.length} />
+              <Stat label="Set a spice level" value={withSpice} of={rows.length} />
+              <Stat label="Picked any preference" value={withInterests} of={rows.length} />
+            </ul>
+          </div>
+
+          {interestCounts.length > 0 && (
+            <div>
+              <h3 className="text-sm text-ink-soft">Which preferences get picked</h3>
+              <ul className="mt-1">
+                {interestCounts.map(([id, n]) => (
+                  <Stat key={id} label={INTEREST_LABEL.get(id) ?? id} value={n} of={rows.length} />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {cityCounts.length > 0 && (
+            <div>
+              <h3 className="text-sm text-ink-soft">Home cities</h3>
+              <ul className="mt-1">
+                {cityCounts.map(([slug, n]) => (
+                  <Stat key={slug} label={CITY_NAME.get(slug) ?? slug} value={n} />
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </section>
 
@@ -257,6 +291,18 @@ export default async function AdminPage() {
         <ResendLink />
       </section>
     </main>
+  );
+}
+
+function Stat({ label, value, of }: { label: string; value: number; of?: number }) {
+  return (
+    <li className="flex items-baseline justify-between gap-3 border-b border-ink/10 py-1.5 text-sm">
+      <span>{label}</span>
+      <span className="shrink-0 tabular-nums text-ink-soft">
+        {value}
+        {of ? ` / ${of}` : ""}
+      </span>
+    </li>
   );
 }
 

@@ -238,8 +238,15 @@ shortlist exists to push against exactly that.
 
 ## Admin
 
-`/admin` shows sign-ups, what gets ordered in each mood, and a way to help
-someone who cannot get in. Read only: nothing on the page can change a user's
+`/admin` shows sign-up counts, what gets ordered in each mood, and a way to
+help someone who cannot get in.
+
+**Sign-ups are counts only.** No individual accounts are listed and the query
+does not select the email column at all, so the page cannot show who anyone is
+even if the rendering were wrong. What it reports instead is the shape of the
+user base: how many joined recently, how many completed each part of their
+profile, which preferences get picked, and which home cities. Mood and ordering
+history stay aggregate. Read only: nothing on the page can change a user's
 data, and there is no admin write policy in the schema to allow it.
 
 **No `service_role` key exists in this application.** An admin reads through
