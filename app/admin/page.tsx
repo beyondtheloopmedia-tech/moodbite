@@ -543,6 +543,23 @@ export default async function AdminPage() {
           Listings are curated here, not crowd-added. Reviews are written by anyone
           signed in, at /restaurants.
         </p>
+        {/* What the public actually sees, stated separately from what you see.
+            An admin reads through policies that widen the public ones, so a row
+            visible here can be invisible to everybody else — which is exactly
+            the confusion this line exists to end. */}
+        <p className="mt-2 text-sm">
+          <strong className="font-normal">{restaurants.filter((r) => r.listed).length}</strong>{" "}
+          <span className="text-ink-soft">visible to the public</span>
+          {restaurants.some((r) => !r.listed) && (
+            <span className="text-chilli">
+              {" · "}
+              {restaurants.filter((r) => !r.listed).length} unlisted, only you can see
+            </span>
+          )}
+          {restaurants.length === 0 && (
+            <span className="text-ink-soft"> — nothing saved yet</span>
+          )}
+        </p>
         <RestaurantManager initial={restaurants} />
       </section>
 
@@ -551,6 +568,18 @@ export default async function AdminPage() {
         <p className="mt-1 text-sm text-ink-soft">
           Posts at /blog. A draft is visible only here; publishing makes it readable
           by anyone, signed in or not.
+        </p>
+        <p className="mt-2 text-sm">
+          <strong className="font-normal">{posts.filter((p) => p.published).length}</strong>{" "}
+          <span className="text-ink-soft">visible to the public</span>
+          {posts.some((p) => !p.published) && (
+            <span className="text-chilli">
+              {" · "}
+              {posts.filter((p) => !p.published).length} draft
+              {posts.filter((p) => !p.published).length === 1 ? "" : "s"}, only you can see
+            </span>
+          )}
+          {posts.length === 0 && <span className="text-ink-soft"> — nothing saved yet</span>}
         </p>
         <PostEditor initial={posts} />
       </section>
