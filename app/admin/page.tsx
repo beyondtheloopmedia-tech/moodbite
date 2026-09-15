@@ -14,6 +14,40 @@ const CITY_NAME = new Map(CITIES.map((c) => [c.slug, c.name]));
 const INTEREST_LABEL = new Map(INTERESTS.map((i) => [i.id as string, i.label]));
 const DAY_PART_ORDER = DAY_PARTS.map((d) => d.id);
 
+/**
+ * The sidebar. Grouped by the question being asked rather than by where the
+ * data happens to come from: who the people are, what they do, what it costs.
+ *
+ * Every href here must match a section or Breakdown id below. There is no
+ * router involved, so a typo fails silently as a link that scrolls nowhere.
+ */
+const REPORTS: { heading: string; items: { href: string; label: string }[] }[] = [
+  {
+    heading: "People",
+    items: [
+      { href: "#people", label: "Accounts" },
+      { href: "#profiles", label: "Profiles" },
+    ],
+  },
+  {
+    heading: "What they order",
+    items: [
+      { href: "#ordered", label: "Overview" },
+      { href: "#mood", label: "By mood" },
+      { href: "#timing", label: "By time of day" },
+      { href: "#cities", label: "By city" },
+      { href: "#weather", label: "By weather" },
+    ],
+  },
+  {
+    heading: "Running it",
+    items: [
+      { href: "#budget", label: "Places budget" },
+      { href: "#signin", label: "Help someone in" },
+    ],
+  },
+];
+
 const LABEL: Record<string, string> = {
   stressed: "Stressed",
   flat: "Flat",
@@ -202,14 +236,65 @@ export default async function AdminPage() {
   ).length;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-10">
+    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-10">
       <h1 className="font-display text-3xl font-semibold tracking-tight">Moodbite admin</h1>
       <p className="mt-2 text-sm text-ink-soft">
         Signed in as {auth.user.email}. Read only: nothing on this page can change a
         user&apos;s data.
       </p>
 
-      <section className="mt-12">
+      {/* The answer before the detail. Everything below is these five numbers
+          broken apart; if you only read one line of this page, read this one. */}
+      <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 border-y border-ink/15 py-5">
+        <Headline label="Accounts" value={String(rows.length)} />
+        <Headline label="Ever asked" value={`${everActive}/${rows.length}`} />
+        <Headline label="Shortlists" value={String(totalShortlists)} />
+        <Headline
+          label="Ended in a pick"
+          value={
+            totalShortlists
+              ? `${Math.round((convertedShortlists / totalShortlists) * 100)}%`
+              : "—"
+          }
+        />
+        {places && (
+          <Headline
+            label="Places budget left"
+            value={`${Math.max(0, places.monthly_cap - places.used_this_month)}`}
+          />
+        )}
+      </dl>
+
+      <div className="mt-10 gap-12 lg:flex lg:items-start">
+        {/* Plain anchors rather than tabs or routes. Everything on this page is
+            already fetched and rendered in one pass, so there is nothing to load
+            on arrival - the only job left is getting your eye to the right
+            report, and the browser does that without any JavaScript from us. */}
+        <nav
+          aria-label="Reports"
+          className="mb-10 shrink-0 border-b border-ink/15 pb-6 text-sm lg:sticky lg:top-8 lg:mb-0 lg:w-44 lg:border-b-0 lg:pb-0"
+        >
+          {REPORTS.map((group) => (
+            <div key={group.heading} className="mb-5 last:mb-0">
+              <p className="text-xs uppercase tracking-wide text-ink-soft/70">{group.heading}</p>
+              <ul className="mt-1.5 space-y-1">
+                {group.items.map((item) => (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      className="text-ink transition-colors hover:text-chilli"
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <div className="min-w-0 flex-1">
+      <section id="people" className="scroll-mt-8">
         <h2 className="font-display text-xl">Sign-ups</h2>
         <p className="mt-1 text-sm text-ink-soft">
           {rows.length} account{rows.length === 1 ? "" : "s"}. This page shows real
@@ -290,7 +375,7 @@ export default async function AdminPage() {
           </table>
         </div>
 
-        <div className="mt-12 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+        <div id="profiles" className="mt-14 scroll-mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
           <div>
             <h3 className="text-sm text-ink-soft">Accounts</h3>
             <ul className="mt-1">
@@ -336,39 +421,10 @@ export default async function AdminPage() {
             </div>
           )}
 
-          {places && (
-            <div>
-              <h3 className="text-sm text-ink-soft">Google Places budget</h3>
-              <ul className="mt-1">
-                <Stat
-                  label="Used this month"
-                  value={places.used_this_month}
-                  of={places.monthly_cap}
-                />
-                <Stat
-                  label="Used today"
-                  value={places.used_today}
-                  of={places.daily_allowance}
-                />
-                <Stat
-                  label="Left this month"
-                  value={Math.max(0, places.monthly_cap - places.used_this_month)}
-                />
-              </ul>
-              <p className="mt-2 text-xs text-ink-soft">
-                The cap sits under Google&apos;s 1,000 free calls a month, so this
-                feature cannot bill you as configured. Raising it means choosing to
-                pay about ₹3 a lookup. Today&apos;s allowance is what is left
-                divided by the days still to come, so the budget lasts the month
-                rather than going early; both numbers live in
-                0011_places_daily_pacing.sql.
-              </p>
-            </div>
-          )}
         </div>
       </section>
 
-      <section className="mt-12">
+      <section id="ordered" className="mt-16 scroll-mt-8">
         <h2 className="font-display text-xl">What gets ordered</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Clicks against impressions, from {log.length} logged event
@@ -413,13 +469,51 @@ export default async function AdminPage() {
           </div>
         )}
 
-        <Breakdown title="By mood" groups={byMood} keys={ordered(byMood, ["stressed", "flat", "fine", "celebrating"])} />
-        <Breakdown title="By time of day" groups={byDayPart} keys={ordered(byDayPart, DAY_PART_ORDER)} />
-        <Breakdown title="By city" groups={byCity} keys={ordered(byCity, [...CITY_NAME.keys()])} name={(k) => CITY_NAME.get(k) ?? (k === "unrecorded" ? "Not recorded" : k)} />
-        <Breakdown title="By weather" groups={byWeather} keys={ordered(byWeather, ["clear", "cloudy", "rain", "drizzle", "storm", "fog", "snow"])} />
+        <Breakdown id="mood" title="By mood" groups={byMood} keys={ordered(byMood, ["stressed", "flat", "fine", "celebrating"])} />
+        <Breakdown id="timing" title="By time of day" groups={byDayPart} keys={ordered(byDayPart, DAY_PART_ORDER)} />
+        <Breakdown id="cities" title="By city" groups={byCity} keys={ordered(byCity, [...CITY_NAME.keys()])} name={(k) => CITY_NAME.get(k) ?? (k === "unrecorded" ? "Not recorded" : k)} />
+        <Breakdown id="weather" title="By weather" groups={byWeather} keys={ordered(byWeather, ["clear", "cloudy", "rain", "drizzle", "storm", "fog", "snow"])} />
       </section>
 
-      <section className="mt-12 max-w-lg">
+      <section id="budget" className="mt-16 max-w-lg scroll-mt-8">
+        <h2 className="font-display text-xl">Google Places budget</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          What the nearby-restaurant panel has spent. It is an operating number
+          rather than a fact about anybody, so it sits here and not under the
+          people.
+        </p>
+        {places && (
+          <div>
+            <h3 className="text-sm text-ink-soft">Google Places budget</h3>
+            <ul className="mt-1">
+              <Stat
+                label="Used this month"
+                value={places.used_this_month}
+                of={places.monthly_cap}
+              />
+              <Stat
+                label="Used today"
+                value={places.used_today}
+                of={places.daily_allowance}
+              />
+              <Stat
+                label="Left this month"
+                value={Math.max(0, places.monthly_cap - places.used_this_month)}
+              />
+            </ul>
+            <p className="mt-2 text-xs text-ink-soft">
+              The cap sits under Google&apos;s 1,000 free calls a month, so this
+              feature cannot bill you as configured. Raising it means choosing to
+              pay about ₹3 a lookup. Today&apos;s allowance is what is left
+              divided by the days still to come, so the budget lasts the month
+              rather than going early; both numbers live in
+              0011_places_daily_pacing.sql.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section id="signin" className="mt-16 max-w-lg scroll-mt-8">
         <h2 className="font-display text-xl">Help someone sign in</h2>
         <p className="mt-1 text-sm text-ink-soft">
           There are no passwords to reset. Sign-in is a one-time code, so the fix for
@@ -428,7 +522,18 @@ export default async function AdminPage() {
         </p>
         <ResendLink />
       </section>
+        </div>
+      </div>
     </main>
+  );
+}
+
+function Headline({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-ink-soft/70">{label}</dt>
+      <dd className="font-display mt-0.5 text-2xl tabular-nums">{value}</dd>
+    </div>
   );
 }
 
@@ -445,11 +550,14 @@ function Stat({ label, value, of }: { label: string; value: number; of?: number 
 }
 
 function Breakdown({
+  id,
   title,
   groups,
   keys,
   name,
 }: {
+  /** anchor target, so the sidebar can jump straight to this report */
+  id: string;
   title: string;
   groups: Map<string, Map<string, Tally>>;
   keys: string[];
@@ -457,7 +565,7 @@ function Breakdown({
 }) {
   if (keys.length === 0) return null;
   return (
-    <div className="mt-8">
+    <div id={id} className="mt-10 scroll-mt-8">
       <h3 className="font-display text-lg">{title}</h3>
       <div className="mt-3 grid gap-x-10 gap-y-6 sm:grid-cols-2">
         {keys.map((key) => {
