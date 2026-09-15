@@ -42,6 +42,9 @@ export const DEFAULT_CITY = CITIES[0];
 
 export const findCity = (slug: string) => CITIES.find((c) => c.slug === slug);
 
+/** For rows that store a city slug and need to print its name. */
+export const CITY_NAME_BY_SLUG = new Map(CITIES.map((c) => [c.slug, c.name]));
+
 /**
  * Past this, "you are in <city>" stops being true. Someone 400km away gets the
  * catalogue and a working link, but no local-favourite claim attached to it.

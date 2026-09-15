@@ -128,8 +128,110 @@ export interface Database {
         };
         Relationships: [];
       };
+      restaurants: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          area: string | null;
+          address: string | null;
+          city: string;
+          lat: number | null;
+          lon: number | null;
+          cuisines: string[];
+          price_band: number | null;
+          veg_only: boolean;
+          google_place_id: string | null;
+          listed: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          name: string;
+          city: string;
+          area?: string | null;
+          address?: string | null;
+          lat?: number | null;
+          lon?: number | null;
+          cuisines?: string[];
+          price_band?: number | null;
+          veg_only?: boolean;
+          google_place_id?: string | null;
+          listed?: boolean;
+        };
+        Update: {
+          slug?: string;
+          name?: string;
+          city?: string;
+          area?: string | null;
+          address?: string | null;
+          lat?: number | null;
+          lon?: number | null;
+          cuisines?: string[];
+          price_band?: number | null;
+          veg_only?: boolean;
+          listed?: boolean;
+        };
+        Relationships: [];
+      };
+      reviews: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          author_id: string;
+          visited_on: string;
+          hygiene: number;
+          food: number;
+          value: number;
+          as_advertised: number;
+          wait: number;
+          body: string;
+          tags: string[];
+          evidence: "none" | "located";
+          hidden: boolean;
+          hidden_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          restaurant_id: string;
+          author_id: string;
+          visited_on: string;
+          hygiene: number;
+          food: number;
+          value: number;
+          as_advertised: number;
+          wait: number;
+          body?: string;
+          tags?: string[];
+          evidence?: "none" | "located";
+        };
+        Update: {
+          hidden?: boolean;
+          hidden_reason?: string | null;
+          body?: string;
+          tags?: string[];
+        };
+        Relationships: [];
+      };
     };
-    Views: Record<never, never>;
+    Views: {
+      restaurant_scores: {
+        Row: {
+          restaurant_id: string;
+          reviews: number;
+          hygiene: number;
+          food: number;
+          value: number;
+          as_advertised: number;
+          wait: number;
+          overall: number;
+          located_reviews: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       /** 'ok', 'month' (global budget spent) or 'day' (this client's share) */

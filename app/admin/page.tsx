@@ -5,6 +5,7 @@ import { INTERESTS } from "@/lib/interests";
 import { DAY_PARTS } from "@/lib/daypart";
 import ResendLink from "@/components/admin/ResendLink";
 import PostEditor, { type PostRow } from "@/components/admin/PostEditor";
+import RestaurantManager, { type RestaurantRow } from "@/components/admin/RestaurantManager";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Moodbite admin", robots: { index: false, follow: false } };
@@ -43,6 +44,7 @@ const REPORTS: { heading: string; items: { href: string; label: string }[] }[] =
   {
     heading: "Running it",
     items: [
+      { href: "#listings", label: "Restaurants" },
       { href: "#writing", label: "Writing" },
       { href: "#budget", label: "Places budget" },
       { href: "#signin", label: "Help someone in" },
@@ -127,8 +129,13 @@ export default async function AdminPage() {
 
   if (!me?.is_admin) return <Denied reason="This account is not an admin." />;
 
-  const [{ data: profiles }, { data: events }, { data: quota }, { data: postRows }] =
-    await Promise.all([
+  const [
+    { data: profiles },
+    { data: events },
+    { data: quota },
+    { data: postRows },
+    { data: restaurantRows },
+  ] = await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -152,12 +159,19 @@ export default async function AdminPage() {
       .select("id, slug, title, excerpt, body, published, published_at, updated_at")
       .order("updated_at", { ascending: false })
       .limit(100),
+    // Unlisted included: the admin read policy in 0014 widens the public one.
+    supabase
+      .from("restaurants")
+      .select("id, slug, name, area, city, lat, lon, cuisines, price_band, veg_only, listed")
+      .order("name")
+      .limit(500),
   ]);
 
   const rows = profiles ?? [];
   const log = events ?? [];
   const places = quota?.[0] ?? null;
   const posts = (postRows ?? []) as PostRow[];
+  const restaurants = (restaurantRows ?? []) as RestaurantRow[];
 
   const now = Date.now();
   const since = (days: number) =>
@@ -521,6 +535,15 @@ export default async function AdminPage() {
             </p>
           </div>
         )}
+      </section>
+
+      <section id="listings" className="mt-16 scroll-mt-8">
+        <h2 className="font-display text-xl">Restaurants</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Listings are curated here, not crowd-added. Reviews are written by anyone
+          signed in, at /restaurants.
+        </p>
+        <RestaurantManager initial={restaurants} />
       </section>
 
       <section id="writing" className="mt-16 scroll-mt-8">
