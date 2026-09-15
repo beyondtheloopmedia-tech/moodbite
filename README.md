@@ -340,6 +340,53 @@ Verified against the catalogue: eight distinct pages with no dish repeated
 across thirty-two shown, every page still respecting the two-per-cuisine cap,
 and identical inputs still producing identical output.
 
+## What the literature says about the claim itself
+
+Three things were checked against published work rather than assumed, and one
+of them is a finding about what this product must NOT say.
+
+**Comfort food does not repair mood, and we never claimed it did.** The
+best-known test of this found that comfort food improved mood no more than any
+other food, or than eating nothing at all — including for participants handed
+chocolate and told not to eat it. The effect people report is expectation, not
+food. The copy here says "the craving is usually downstream of the mood", which
+is a claim about *predicting* what somebody wants, and the reason lines are
+descriptive — "rich enough to feel like a treat", not "this will help". That
+distinction is the difference between a recommender and a false promise, and it
+should survive every future rewrite of the landing copy.
+*Wagner, Ahlstrom, Redden, Vickers & Mann, The Myth of Comfort Food, Health
+Psychology (2014).*
+
+**Stress raises the desire for spice, not just sugar and fat.** This one was
+counter-intuitive enough that the engine had it backwards by omission: the
+obvious reading is that stressed people retreat to bland soothing food, so
+`stressed` moved comfort, indulgence and sweetness and left heat alone, while
+exhaustion actively lowered it. The laboratory result is the opposite —
+acute stress significantly increased desire for spicy and high-fat food
+specifically. Stress now raises heat too, which changes the headline for 11% of
+stressed answers and leaves every other mood untouched.
+*Stress-driven shifts in sensory desire and food appetite, Food Quality and
+Preference (2025).*
+
+**The stress response is a majority, not a rule.** Reviews put 35–60% of people
+eating more under stress and 25–40% eating *less*, moderated by emotional-eating
+tendency. Every mood adjustment in `buildProfile` is therefore the direction
+most people go, applied to everybody, and wrong for roughly a third of readers
+on any given evening. That is precisely what the per-account taste model
+corrects: population evidence sets the prior, and what a particular person
+actually chooses overrides it. It is also the reason those numbers stay modest —
+making them larger would claim a uniformity the literature does not support.
+
+Two existing design choices were checked and left alone. **Four options is
+inside the safe range** for choice overload, where the classic demonstration is
+24 versus 6 making people ten times less likely to choose anything at all; one
+headline and three alternates is a curated shortlist rather than a menu.
+**Sensory-specific satiety supports the fatigue term** — repeated exposure
+reliably lowers how much somebody likes a food — though the literature measures
+that over weeks and gives no day count, so the fourteen-day window and
+two-sighting saturation remain tuned by simulation and are not dressed up as
+evidence.
+
 ## What the evidence changed
 
 Five sources were read against the engine. Three produced changes, one confirmed

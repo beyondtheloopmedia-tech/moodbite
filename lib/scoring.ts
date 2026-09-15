@@ -161,6 +161,20 @@ export function buildProfile(
       break;
   }
 
+  /*
+   * How hard any of this should push.
+   *
+   * The stress-to-energy-dense shift is real and it is a MAJORITY effect, not a
+   * rule: reviews put 35-60% of people eating more under stress and 25-40%
+   * eating less, moderated by how much of an emotional eater somebody is. The
+   * moves below are therefore the direction most people go, applied to
+   * everybody, and wrong for roughly a third of readers on any given evening.
+   *
+   * That is what the per-account taste model is for. It learns which way a
+   * particular person actually goes and bends the target back. Population
+   * evidence sets the prior; the individual overrides it. Making these numbers
+   * larger would be claiming a uniformity the literature does not support.
+   */
   switch (answers.mood) {
     case "stressed":
       target.comfort += 0.35;
@@ -172,6 +186,15 @@ export function buildProfile(
       // stress reaches sweetness directly.
       // Saraswat & Harle 2026, IJSRA 18(03) 981-991, tables 2 and 5.
       target.sweetness += 0.2;
+      // Stress raises the desire for SPICINESS as well as fattiness, which is
+      // not the obvious prediction - the intuitive reading is that people
+      // retreat to bland soothing food, and this engine encoded exactly that by
+      // leaving heat untouched here while lowering it for exhaustion. The
+      // laboratory result runs the other way: acute stress significantly
+      // increased desire for spicy and high-fat food specifically.
+      // Stress-driven shifts in sensory desire and food appetite, Food Quality
+      // and Preference (2025).
+      target.heat += 0.15;
       weights.comfort += 0.8;
       weights.novelty += 0.4;
       weights.sweetness += 0.3;
