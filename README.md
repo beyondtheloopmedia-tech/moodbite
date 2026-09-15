@@ -205,6 +205,13 @@ ranked by the same mood that chose the dish.
 - **One tap, one call.** Every lookup is billed, so nothing is fetched for a
   shortlist nobody asked to see: only for the one dish being considered, and only
   when asked.
+- **Open, it stays true.** Moving city, or the engine picking a different dish
+  underneath the panel, leaves the list on screen wrong rather than merely stale,
+  so it re-fetches. Never before the first tap, though: somebody who did not ask
+  for this never spends a call on it. Changes after that tap are debounced by
+  600ms and skipped while a recommendation is in flight, because the city picker
+  is a native select and the heat slider fires on every step — verified as five
+  rapid city changes costing one call, and an eight-step heat drag costing one.
 - **The cap is a precondition, not a refinement.** Asking for ratings puts the
   call in Google's Enterprise tier: 1,000 free a month, then about $35 per 1,000.
   `0009_places_quota.sql` holds a global monthly cap of 900 and a per-client

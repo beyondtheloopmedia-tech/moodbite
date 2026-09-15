@@ -347,8 +347,9 @@ export default function MoodQuiz() {
           }
           nearby={
             <NearbyPlaces
-              // a new dish is a new question, so the panel starts closed again
-              key={`${results[0].dish.id}|${city?.slug ?? ""}`}
+              // deliberately no key: the panel is meant to survive a city or
+              // dish change and re-fetch itself, not remount and forget it was
+              // ever opened
               dishId={results[0].dish.id}
               dishName={results[0].dish.name}
               city={city}
@@ -357,6 +358,7 @@ export default function MoodQuiz() {
               mood={answers.mood ?? null}
               hunger={answers.hunger ?? null}
               interests={interests}
+              busy={busy}
             />
           }
           heat={heat}
