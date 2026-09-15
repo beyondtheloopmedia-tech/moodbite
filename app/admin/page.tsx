@@ -17,6 +17,14 @@ const LABEL: Record<string, string> = {
   flat: "Flat",
   fine: "Fine",
   celebrating: "Celebrating",
+  // day parts drive copy and palette and are finer than slots; both can appear
+  // in the same column because rows written before 0003 only have a slot
+  earlyMorning: "Early morning",
+  morning: "Morning",
+  brunch: "Brunch",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  lateNight: "Late night",
   breakfast: "Breakfast",
   lunch: "Lunch",
   snack: "Snack",
@@ -189,7 +197,7 @@ export default async function AdminPage() {
 
         <Breakdown title="By mood" groups={byMood} keys={ordered(byMood, ["stressed", "flat", "fine", "celebrating"])} />
         <Breakdown title="By time of day" groups={byDayPart} keys={ordered(byDayPart, DAY_PART_ORDER)} />
-        <Breakdown title="By city" groups={byCity} keys={ordered(byCity, [...CITY_NAME.keys()])} name={(k) => CITY_NAME.get(k) ?? k} />
+        <Breakdown title="By city" groups={byCity} keys={ordered(byCity, [...CITY_NAME.keys()])} name={(k) => CITY_NAME.get(k) ?? (k === "unrecorded" ? "Not recorded" : k)} />
         <Breakdown title="By weather" groups={byWeather} keys={ordered(byWeather, ["clear", "cloudy", "rain", "drizzle", "storm", "fog", "snow"])} />
       </section>
 
