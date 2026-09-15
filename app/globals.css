@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sage: #dce3d5;
+  --color-sage-deep: #c6d1bb;
+  --color-ink: #241a2b;
+  --color-ink-soft: #5c4f63;
+  --color-paper: #f4f2ea;
+  --color-turmeric: #d9921f;
+  --color-chilli: #a8352a;
+
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui;
+  --font-body: "Instrument Sans", ui-sans-serif, system-ui;
+}
+
+html,
+body {
+  background: var(--color-sage);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+input[type="range"] {
+  accent-color: var(--color-chilli);
+}
+
+/* ---------------------------------------------------------------------------
+   Time of day and weather.
+
+   These redefine the same tokens @theme already declares, so every existing
+   utility (bg-sage, text-ink, bg-ink/text-paper, border-ink/20) follows along
+   and no component needs to know a theme exists.
+
+   Dark parts of the day invert ink and paper rather than introducing new
+   tokens: text-ink stays "the text colour" and bg-ink/text-paper stays "the
+   button", they just swap ends. --bg-base is the daypart's background before
+   weather tints it.
+--------------------------------------------------------------------------- */
+
+html {
+  --bg-base: var(--color-sage);
+  --tint: #7a8fa6;
+  --tint-amount: 0%;
+
+  /* falls back to the untinted base wherever color-mix is unsupported */
+  background: var(--bg-base);
+  background: color-mix(in oklab, var(--bg-base), var(--tint) var(--tint-amount));
+  transition: background-color 600ms ease, color 600ms ease;
+}
+
+body {
+  background: transparent;
+}
+
+html[data-daypart="earlyMorning"] {
+  --bg-base: #dde3e2;
+  --color-sage-deep: #c7d1cf;
+  --color-ink: #23303a;
+  --color-ink-soft: #435159;
+}
+
+html[data-daypart="morning"] {
+  --bg-base: #dfe7d7;
+  --color-sage-deep: #c8d4bc;
+  --color-ink: #1f2a22;
+  --color-ink-soft: #46544a;
+}
+
+html[data-daypart="brunch"] {
+  --bg-base: #e7e6d5;
+  --color-sage-deep: #d5d3bd;
+  --color-ink: #2b2a1e;
+  --color-ink-soft: #534f40;
+}
+
+html[data-daypart="lunch"] {
+  --bg-base: #dce3d5;
+  --color-sage-deep: #c6d1bb;
+  --color-ink-soft: #4d4254;
+}
+
+html[data-daypart="afternoon"] {
+  --bg-base: #e6e0cc;
+  --color-sage-deep: #d4ccb2;
+  --color-ink: #2f2719;
+  --color-ink-soft: #59503c;
+}
+
+html[data-daypart="evening"] {
+  --bg-base: #d9cfc3;
+  --color-sage-deep: #c6b9aa;
+  --color-ink: #2d2018;
+  --color-ink-soft: #55453c;
+  --color-chilli: #9c3526;
+}
+
+/* the lights go down */
+html[data-daypart="dinner"] {
+  --bg-base: #2a2631;
+  --color-sage-deep: #383243;
+  --color-ink: #ece7f1;
+  --color-ink-soft: #bcb4c7;
+  --color-paper: #221e29;
+  --color-chilli: #e2705f;
+}
+
+html[data-daypart="lateNight"] {
+  --bg-base: #1b1822;
+  --color-sage-deep: #292433;
+  --color-ink: #ded8e6;
+  --color-ink-soft: #ada4bb;
+  --color-paper: #17141d;
+  --color-chilli: #d9645a;
+}
+
+/* Weather tints the background rather than repainting it, so it reads as
+   conditions over the day rather than a second, competing theme. */
+html[data-weather="rain"],
+html[data-weather="drizzle"] {
+  --tint: #4f6f92;
+  --tint-amount: 11%;
+}
+
+html[data-weather="storm"] {
+  --tint: #3b4a63;
+  --tint-amount: 13%;
+}
+
+html[data-weather="fog"] {
+  --tint: #9aa0a3;
+  --tint-amount: 12%;
+}
+
+html[data-weather="snow"] {
+  --tint: #cfe0ef;
+  --tint-amount: 10%;
+}
+
+html[data-weather="cloudy"] {
+  --tint: #8a9099;
+  --tint-amount: 9%;
+}
+
+html[data-weather="clear"] {
+  --tint: #e8b45c;
+  --tint-amount: 6%;
+}
