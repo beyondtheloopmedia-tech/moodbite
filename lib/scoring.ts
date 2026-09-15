@@ -297,7 +297,14 @@ export function recommend(
     interests,
     activity,
   );
-  const wantPortion = HUNGER_TO_PORTION[answers.hunger];
+  // "How hungry?" is answered for one person. When people are over, the order
+  // is for several, so the wanted portion moves up a step. Without this the
+  // company activity did nothing at all unless "feed me properly" had already
+  // been chosen, because there were no feast portions in range to reward.
+  const wantPortion = Math.min(
+    2,
+    HUNGER_TO_PORTION[answers.hunger] + (activity === "company" ? 1 : 0),
+  );
   const thrifty = interests.includes("thrifty");
 
   const scored = dishes
