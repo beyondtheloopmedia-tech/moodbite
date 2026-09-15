@@ -124,6 +124,11 @@ export default function MoodQuiz() {
   // A fast is a fact about today, not a standing preference, so it is session
   // state and is never persisted.
   const [fasting, setFasting] = useState(false);
+  // Dishes already offered and passed over, so "something else" means it.
+  // Session state on purpose: a fresh visit should be allowed to suggest the
+  // same thing again, because tonight is not last night.
+  const [seen, setSeen] = useState<string[]>([]);
+  const [wrapped, setWrapped] = useState(false);
   const { logShown, logClicked } = useEventLog(userId);
 
   // Everything recommend() reads, captured at the moment it ran. Kept in one
@@ -148,7 +153,7 @@ export default function MoodQuiz() {
   useEffect(() => setSlot(slotForHour(new Date().getHours())), []);
 
   const fetchResults = useCallback(
-    async (a: Answers, h: number | null) => {
+    async (a: Answers, h: number | null, skip: string[] = []) => {
       setBusy(true);
       setError(null);
       try {
@@ -165,12 +170,22 @@ export default function MoodQuiz() {
           activity,
           spice,
           avoidCuisines,
+          exclude: skip,
         }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Could not work that out.");
-        setResults(data.results as ResultItem[]);
+        const next = data.results as ResultItem[];
+        setResults(next);
         setWeatherNote((data.weatherNote as string | null) ?? null);
+        // The catalogue ran out and the server started again from the top, so
+        // what this page thinks it has shown is no longer true.
+        if (data.wrapped) {
+          setSeen([]);
+          setWrapped(true);
+        } else {
+          setWrapped(false);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong.");
       } finally {
@@ -182,7 +197,10 @@ export default function MoodQuiz() {
 
   useEffect(() => {
     if (!results) return;
-    void fetchResults(answers as Answers, heat);
+    // The city or a preference changed, which is a different question, not the
+    // same one asked again - so what was passed over before no longer applies.
+    setSeen([]);
+    void fetchResults(answers as Answers, heat, []);
     // answers and heat are fixed by this point; the city is what changed
   }, [city?.slug, interests, fasting, activity, spice, avoidCuisines]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -210,7 +228,19 @@ export default function MoodQuiz() {
     setWeatherNote(null);
     setHeat(null);
     setError(null);
+    setSeen([]);
+    setWrapped(false);
     setStep(-1);
+  }
+
+  // Same answers, four dishes further down. Deliberately not randomness: the
+  // order is the engine's opinion, so "something else" means the next best
+  // thing rather than a reshuffle of the same one.
+  function showOthers() {
+    if (!results) return;
+    const skip = [...seen, ...results.map((r) => r.dish.id)];
+    setSeen(skip);
+    void fetchResults(answers as Answers, heat, skip);
   }
 
   function changeHeat(v: number) {
@@ -370,6 +400,10 @@ export default function MoodQuiz() {
               hunger={answers.hunger ?? null}
               interests={interests}
               busy={busy}
+              // Nothing passed over yet means this is the answer, not a page
+              // of browsing. A city or preference change clears `seen`, so it
+              // counts as a fresh answer too.
+              auto={seen.length === 0}
               coordsStatus={coordsStatus}
               onLocate={refineCoords}
             />
@@ -377,6 +411,8 @@ export default function MoodQuiz() {
           heat={heat}
           onHeat={changeHeat}
           onRestart={restart}
+          onShowOthers={showOthers}
+          wrapped={wrapped}
           busy={busy}
         />
       )}

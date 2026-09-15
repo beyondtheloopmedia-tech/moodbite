@@ -18,6 +18,14 @@ type State =
  * "also close": those are a list to glance at, and four billed calls to furnish
  * a glance is not a trade worth making.
  *
+ * And only for the FIRST answer of a session. Once somebody starts pressing
+ * "show me something else" they are browsing, not deciding, and buying a list
+ * of restaurants for a dish they are about to skip past is paying for a choice
+ * nobody has made. Measured before this rule existed: one answer and four
+ * presses cost five calls, which is a whole day's allowance for one reader.
+ * While browsing the panel offers instead of loading, and the offer costs
+ * nothing until it is taken.
+ *
  * It stays true afterwards. Moving city, or the engine picking a different dish
  * underneath it, leaves the list on screen wrong rather than merely stale -
  * restaurants in the city you just left are not an answer to anything - so it
@@ -40,6 +48,7 @@ export default function NearbyPlaces({
   hunger,
   interests,
   busy,
+  auto,
   coordsStatus,
   onLocate,
 }: {
@@ -53,11 +62,16 @@ export default function NearbyPlaces({
   interests: InterestId[];
   /** a recommendation is in flight, so the dish underneath is about to change */
   busy: boolean;
+  /** the first answer of a session, rather than one arrived at by browsing */
+  auto: boolean;
   coordsStatus: CoordsStatus;
   /** asks for a coordinate without rewriting the city the reader chose */
   onLocate: () => void;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
+  // Which dish the reader has explicitly asked about, for the browsing case.
+  // Keyed by signature so asking about one dish does not answer for the next.
+  const [askedFor, setAskedFor] = useState<string | null>(null);
 
   // Primitives, so an unchanged city that arrives as a new object does not read
   // as a change and spend a call.
@@ -149,7 +163,11 @@ export default function NearbyPlaces({
   const signature = `${dishId}|${citySlug ?? ""}|${lat ?? ""},${lon ?? ""}`;
   const fetched = useRef<string | null>(null);
 
+  const wanted = auto || askedFor === signature;
+
   useEffect(() => {
+    // Browsing. Nothing is bought until it is asked for.
+    if (!wanted) return;
     // Changing city re-runs the recommendation too, so the dish underneath is
     // about to move. Waiting for that avoids paying for the intermediate state
     // where the city is new and the dish is still the old city's.
@@ -169,7 +187,7 @@ export default function NearbyPlaces({
       void look();
     }, delay);
     return () => clearTimeout(timer);
-  }, [busy, coordsStatus, signature, look]);
+  }, [wanted, busy, coordsStatus, signature, look]);
 
   // Offered once, alongside results that were measured from a city centre
   // rather than from the reader. Withdrawn the moment it is declined.
@@ -184,6 +202,17 @@ export default function NearbyPlaces({
         Use my exact location
       </button>
     ) : null;
+
+  if (!wanted) {
+    return (
+      <button
+        onClick={() => setAskedFor(signature)}
+        className="font-display mt-3 border border-ink px-6 py-3 text-base transition-colors hover:bg-sage-deep"
+      >
+        Who does this well near me?
+      </button>
+    );
+  }
 
   if (state.kind === "loading") {
     return <p className="mt-6 text-sm text-ink-soft">Looking around{cityName ? ` ${cityName}` : ""}.</p>;

@@ -205,6 +205,13 @@ ranked by the same mood that chose the dish.
 - **One result, one call.** It loads with the recommendation, for the headline
   dish only — never for the three under "also close", because four billed calls
   to furnish a glance is not a trade worth making.
+- **Browsing does not buy anything.** It auto-loads for the *first* answer of a
+  session only. Once somebody presses "show me something else" they are
+  browsing rather than deciding, and buying restaurants for a dish they are
+  about to skip past is paying for a choice nobody has made. Measured before
+  the rule existed: one answer and four presses cost five calls, a whole day's
+  allowance for one reader. After it, one. Browsed dishes get a button instead,
+  which costs nothing until it is pressed.
 - **It stays true.** Moving city, or the engine picking a different dish
   underneath the panel, leaves the list on screen wrong rather than merely stale,
   so it re-fetches — debounced by 600ms and skipped while a recommendation is
@@ -263,6 +270,23 @@ field sits in; check before adding one.
 
 Set `GOOGLE_PLACES_KEY` (see `.env.example`) to switch it on. Server side only —
 a Places key in the browser bundle gets scraped and billed.
+
+## Asking again without starting again
+
+"Show me something else" re-runs the same answers with the dishes already seen
+excluded, so it returns the *next* four by score rather than a reshuffle of the
+same four. The engine stays deterministic, which matters because the result
+carries a "picked because…" line: randomness would make that sentence a lie.
+
+Run out and it loops rather than dead-ends — the server re-asks with no
+exclusions, flags `wrapped`, and the page says so instead of silently repeating
+the first four, which would read as the button being broken. Changing city or a
+preference clears what was seen, because that is a different question rather
+than the same one asked again.
+
+Verified against the catalogue: eight distinct pages with no dish repeated
+across thirty-two shown, every page still respecting the two-per-cuisine cap,
+and identical inputs still producing identical output.
 
 ## What the evidence changed
 

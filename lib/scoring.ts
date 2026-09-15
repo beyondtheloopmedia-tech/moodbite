@@ -295,6 +295,7 @@ export function recommend(
   activity: Activity | null = null,
   spice: SpiceLevel | null = null,
   avoidCuisines: string[] = [],
+  exclude: string[] = [],
 ): Recommendation[] {
   const { target, weights, maxEta } = buildProfile(
     answers,
@@ -315,6 +316,10 @@ export function recommend(
   const thrifty = interests.includes("thrifty");
 
   const scored = dishes
+    // Already shown and passed over. Dropped before scoring rather than after,
+    // so the two-per-cuisine cap applies to what is actually left rather than
+    // being spent on dishes nobody is going to see again.
+    .filter((d) => !exclude.includes(d.id))
     .filter((d) => dietOk(d, answers.diet))
     // "I do not eat that" is not a preference to be weighed against flavour.
     .filter((d) => !avoidCuisines.includes(d.cuisine))

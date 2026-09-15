@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     activity?: unknown;
     spice?: unknown;
     avoidCuisines?: unknown;
+    exclude?: unknown;
   };
   try {
     body = await req.json();
@@ -69,6 +70,12 @@ export async function POST(req: Request) {
   const dishes = await getSource().list(city?.slug ?? "india");
   const fasting = body.fasting === true;
 
+  // Dishes already offered and passed over. Unknown ids cost nothing: they
+  // simply match no dish, so a stale list from an older catalogue is harmless.
+  const exclude = Array.isArray(body.exclude)
+    ? body.exclude.filter((d): d is string => typeof d === "string").slice(0, 200)
+    : [];
+
   // Activity is a Pro feature, so entitlement is checked here rather than in
   // the browser. A client-side gate is a suggestion; this is the gate.
   let activity: Activity | null = null;
@@ -84,20 +91,34 @@ export async function POST(req: Request) {
       if (profile?.is_pro) activity = body.activity;
     }
   }
-  const results = recommend(
-    dishes,
-    answers,
-    slot,
-    heat,
-    4,
-    city,
-    weather,
-    interests,
-    fasting,
-    activity,
-    spice,
-    avoidCuisines,
-  );
+  const ask = (skip: string[]) =>
+    recommend(
+      dishes,
+      answers,
+      slot,
+      heat,
+      4,
+      city,
+      weather,
+      interests,
+      fasting,
+      activity,
+      spice,
+      avoidCuisines,
+      skip,
+    );
+
+  let results = ask(exclude);
+
+  // Asking for something else until there is nothing else should loop back to
+  // the beginning, not dead-end on an empty screen. The flag travels so the
+  // page can say what happened and the caller can forget what it had seen -
+  // silently repeating the first four would read as the button being broken.
+  let wrapped = false;
+  if (results.length === 0 && exclude.length > 0) {
+    results = ask([]);
+    wrapped = results.length > 0;
+  }
 
   // An empty list is a valid answer, not an error. Results renders the copy.
   return NextResponse.json({
@@ -106,6 +127,7 @@ export async function POST(req: Request) {
     weatherNote: weatherBias(weather).note || null,
     fasting,
     activity,
+    wrapped,
     results: results.map((r) => ({ ...r, links: orderLinks(r.dish, city) })),
   });
 }

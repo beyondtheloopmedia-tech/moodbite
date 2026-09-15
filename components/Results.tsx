@@ -21,6 +21,8 @@ export default function Results({
   heat,
   onHeat,
   onRestart,
+  onShowOthers,
+  wrapped,
   busy,
 }: {
   items: ResultItem[];
@@ -34,6 +36,10 @@ export default function Results({
   heat: number | null;
   onHeat: (v: number) => void;
   onRestart: () => void;
+  /** same answers, the next four dishes down */
+  onShowOthers: () => void;
+  /** the catalogue ran out and the list started again from the top */
+  wrapped: boolean;
   busy: boolean;
 }) {
   if (items.length === 0) {
@@ -161,9 +167,24 @@ export default function Results({
 
       <div className="mt-10 border-t border-ink/20 pt-6">{cityBar}</div>
 
-      <button onClick={onRestart} className="mt-8 border-b-2 border-ink pb-1 font-display text-lg">
-        Ask me again
-      </button>
+      {wrapped ? (
+        <p className="mt-8 text-sm text-ink-soft">
+          That is everything that fits how you feel, so we are back at the top.
+        </p>
+      ) : null}
+
+      <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <button
+          onClick={onShowOthers}
+          disabled={busy}
+          className="font-display border-b-2 border-ink pb-1 text-lg disabled:opacity-50"
+        >
+          {busy ? "Finding others" : "Show me something else"}
+        </button>
+        <button onClick={onRestart} className="text-sm text-ink-soft underline underline-offset-4">
+          Ask me again
+        </button>
+      </div>
     </div>
   );
 }
