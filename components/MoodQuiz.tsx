@@ -135,8 +135,12 @@ export default function MoodQuiz() {
 
   useEffect(() => {
     if (!results) return;
-    logShown(results.map((r) => r.dish.id), city?.slug ?? null, slot);
-  }, [results, city?.slug, slot, logShown]);
+    logShown(results.map((r) => r.dish.id), city?.slug ?? null, slot, {
+      mood: answers.mood ?? null,
+      energy: answers.energy ?? null,
+      fasting,
+    });
+  }, [results, city?.slug, slot, logShown, answers.mood, answers.energy, fasting]);
 
   function choose(key: Key, value: string) {
     const next = { ...answers, [key]: value } as Partial<Answers>;
@@ -283,7 +287,13 @@ export default function MoodQuiz() {
           slot={slot}
           city={city}
           weatherNote={weatherNote}
-          onOrder={(dishId) => logClicked(dishId, city?.slug ?? null, slot)}
+          onOrder={(dishId) =>
+            logClicked(dishId, city?.slug ?? null, slot, {
+              mood: answers.mood ?? null,
+              energy: answers.energy ?? null,
+              fasting,
+            })
+          }
           cityBar={
             <CityBar
               city={city}

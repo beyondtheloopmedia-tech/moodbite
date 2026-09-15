@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
-import type { Slot } from "@/lib/types";
+import type { Answers, Slot } from "@/lib/types";
 
 /**
  * The click stream: what was put in front of someone, and what they went with.
@@ -14,6 +14,17 @@ import type { Slot } from "@/lib/types";
  * purpose: rows are owned by a user, and inventing an anonymous identity to log
  * against would be collecting more than the feature needs.
  */
+/**
+ * What was true when the recommendation was made. Without this the log can say
+ * what was ordered but not the mood it was ordered in, which is the only
+ * question worth asking of it later.
+ */
+export interface EventContext {
+  mood: Answers["mood"] | null;
+  energy: Answers["energy"] | null;
+  fasting: boolean;
+}
+
 export function useEventLog(userId: string | null) {
   const supabase = getSupabaseBrowser();
 
@@ -28,9 +39,9 @@ export function useEventLog(userId: string | null) {
   }, [userId]);
 
   const logShown = useCallback(
-    (dishIds: string[], city: string | null, slot: Slot) => {
+    (dishIds: string[], city: string | null, slot: Slot, ctx: EventContext) => {
       if (!userId || !supabase || dishIds.length === 0) return;
-      const fingerprint = `${slot}|${city ?? ""}|${dishIds.join(",")}`;
+      const fingerprint = `${slot}|${city ?? ""}|${ctx.mood ?? ""}|${dishIds.join(",")}`;
       if (loggedShortlists.current.has(fingerprint)) return;
       loggedShortlists.current.add(fingerprint);
 
@@ -54,7 +65,7 @@ export function useEventLog(userId: string | null) {
   );
 
   const logClicked = useCallback(
-    (dishId: string, city: string | null, slot: Slot) => {
+    (dishId: string, city: string | null, slot: Slot, ctx: EventContext) => {
       if (!userId || !supabase) return;
       // Not awaited, so it never delays opening the delivery app, but the
       // builder still has to be executed to send anything at all.
@@ -66,6 +77,7 @@ export function useEventLog(userId: string | null) {
           city,
           slot,
           action: "clicked" as const,
+          ...ctx,
         })
         .then(({ error }) => {
           if (error) console.warn("moodbite: could not log click", error.message);

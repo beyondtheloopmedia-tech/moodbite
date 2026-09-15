@@ -17,6 +17,8 @@ export interface Database {
           interests: InterestId[];
           diet: Diet | null;
           home_city: string | null;
+          email: string | null;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -41,6 +43,9 @@ export interface Database {
           city: string | null;
           slot: string | null;
           action: "shown" | "clicked";
+          mood: string | null;
+          energy: string | null;
+          fasting: boolean | null;
           created_at: string;
         };
         Insert: {
@@ -49,13 +54,18 @@ export interface Database {
           city?: string | null;
           slot?: string | null;
           action: "shown" | "clicked";
+          mood?: string | null;
+          energy?: string | null;
+          fasting?: boolean | null;
         };
         Update: never;
         Relationships: [];
       };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      is_admin: { Args: Record<string, never>; Returns: boolean };
+    };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
   };

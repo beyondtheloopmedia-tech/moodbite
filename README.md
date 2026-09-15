@@ -198,6 +198,37 @@ occasions ordering in is chosen to lift spirits, and 82% of consumers order from
 five or fewer restaurants, largely on autopilot. The two-per-cuisine cap on the
 shortlist exists to push against exactly that.
 
+## Admin
+
+`/admin` shows sign-ups, what gets ordered in each mood, and a way to help
+someone who cannot get in. Read only: nothing on the page can change a user's
+data, and there is no admin write policy in the schema to allow it.
+
+**No `service_role` key exists in this application.** An admin reads through
+their own session under the policies in `0002_admin.sql`, so there is no key
+that bypasses row level security and nothing whose leak would expose every
+user. The page guard is the second lock, not the only one: if `is_admin` is
+false the queries return empty on their own.
+
+`is_admin` is a column on `profiles`, set by hand in the dashboard. Nothing in
+the app can grant it, so admin cannot be reached by signing up.
+
+There are no passwords, so there is nothing to reset. "Help someone sign in"
+sends them a fresh one-time code, which goes to *their* address and never to
+the admin: an admin can get a user back in without ever being able to get in
+as them.
+
+### The mood data had to be recorded first
+
+`recommendation_events` logged what was shown and clicked but not the mood it
+was shown in, so "what do people order when stressed" was unanswerable. `0002`
+adds `mood`, `energy` and `fasting` to the log. Rows written before it have
+null moods and are grouped separately rather than silently folded in.
+
+The panel shows clicks against impressions, not clicks alone. A dish with many
+impressions and no clicks is the engine being confidently wrong, which is the
+thing worth seeing.
+
 ## Where you are
 
 The browser gives a coordinate. `lib/cities.ts` holds the delivery cities with their
