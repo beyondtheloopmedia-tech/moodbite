@@ -3,6 +3,18 @@ export const SLOTS: Slot[] = ["breakfast", "lunch", "snack", "dinner", "latenigh
 export type Portion = "snack" | "meal" | "feast";
 export type Diet = "veg" | "egg" | "anything";
 
+/**
+ * What someone is doing while they eat.
+ *
+ * Not a mood and not a vector axis: it constrains the *form* of the food
+ * rather than its flavour. Watching something wants one hand free and no
+ * mess; eating with people wants something worth sharing.
+ */
+export type Activity = "watching" | "working" | "company";
+export const ACTIVITIES: Activity[] = ["watching", "working", "company"];
+export const isActivity = (v: unknown): v is Activity =>
+  typeof v === "string" && (ACTIVITIES as string[]).includes(v);
+
 export interface City {
   /** the path segment Zomato uses; see cities.ts, these are verified not derived */
   slug: string;
@@ -55,6 +67,10 @@ export interface Dish {
    * garlic, rock salt rather than table salt. Absent means not suitable.
    */
   fastingSafe?: boolean;
+  /** Eaten with hands, no cutlery. The thing that matters when a screen is on. */
+  handheld?: boolean;
+  /** Drips, needs napkins, or wants both hands and your attention. */
+  messy?: boolean;
   vector: Vector;
   /** shown on the result card, written as one plain sentence */
   note: string;

@@ -4,7 +4,8 @@ import { recommend, slotForHour, weatherBias } from "@/lib/scoring";
 import { fetchWeather } from "@/lib/weather";
 import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
-import { SLOTS, type Answers, type Slot } from "@/lib/types";
+import { getSupabaseServer } from "@/lib/supabase/server";
+import { SLOTS, isActivity, type Activity, type Answers, type Slot } from "@/lib/types";
 
 export async function POST(req: Request) {
   let body: {
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
     city?: string;
     interests?: unknown;
     fasting?: unknown;
+    activity?: unknown;
   };
   try {
     body = await req.json();
@@ -49,7 +51,34 @@ export async function POST(req: Request) {
 
   const dishes = await getSource().list(city?.slug ?? "india");
   const fasting = body.fasting === true;
-  const results = recommend(dishes, answers, slot, heat, 4, city, weather, interests, fasting);
+
+  // Activity is a Pro feature, so entitlement is checked here rather than in
+  // the browser. A client-side gate is a suggestion; this is the gate.
+  let activity: Activity | null = null;
+  if (isActivity(body.activity)) {
+    const supabase = await getSupabaseServer();
+    const { data: auth } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
+    if (auth?.user) {
+      const { data: profile } = await supabase!
+        .from("profiles")
+        .select("is_pro")
+        .eq("id", auth.user.id)
+        .maybeSingle();
+      if (profile?.is_pro) activity = body.activity;
+    }
+  }
+  const results = recommend(
+    dishes,
+    answers,
+    slot,
+    heat,
+    4,
+    city,
+    weather,
+    interests,
+    fasting,
+    activity,
+  );
 
   // An empty list is a valid answer, not an error. Results renders the copy.
   return NextResponse.json({
@@ -57,6 +86,7 @@ export async function POST(req: Request) {
     city: city ?? null,
     weatherNote: weatherBias(weather).note || null,
     fasting,
+    activity,
     results: results.map((r) => ({ ...r, links: orderLinks(r.dish, city) })),
   });
 }

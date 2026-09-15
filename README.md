@@ -265,6 +265,36 @@ The panel shows clicks against impressions, not clicks alone. A dish with many
 impressions and no clicks is the engine being confidently wrong, which is the
 thing worth seeing.
 
+## What you are doing while you eat
+
+Most eating happens in front of a screen: the consumption-value survey records
+screen time while eating as a variable, and roughly two thirds of that sample
+sat at the higher levels. So this is the common case, not a novelty.
+
+It constrains the *form* of the food rather than its flavour, which is why it
+is not a vector axis:
+
+| Doing | What changes |
+| --- | --- |
+| Watching something | one-handed up, messy down |
+| Working | messy down hard, and the target shifts lighter |
+| People are over | feast portions up, single-serving snacks down |
+
+Two new dish flags carry it, `handheld` and `messy`, tagged by what the eating
+actually involves rather than by cuisine.
+
+### Pro, and where the gate lives
+
+The activity feature is Pro. `profiles.is_pro` records **entitlement only,
+never billing state** - who has access, not who paid, when or how much. Billing
+has its own failure modes and a boolean quietly doubling as a receipt is how
+the two get confused. It is granted by hand, exactly like `is_admin`; nothing
+in the app can set it.
+
+**The gate is on the server.** `app/api/recommend` reads the session and checks
+the entitlement itself, and ignores the `activity` field without it. Hiding the
+control in the browser is presentation; this is the lock.
+
 ## Where you are
 
 The browser gives a coordinate. `lib/cities.ts` holds the delivery cities with their

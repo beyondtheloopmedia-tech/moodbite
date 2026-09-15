@@ -40,7 +40,8 @@ export default function Results({
           Nothing in the catalogue fits all of that.
         </p>
         <p className="mt-4 text-ink-soft">
-          Loosen the wait time or the diet filter and try again.
+          The wait time and the diet filter are the two that rule out the most.
+          Loosen either and there will be something.
         </p>
         <div className="mt-6">{cityBar}</div>
         <button

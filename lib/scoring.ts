@@ -1,7 +1,7 @@
 import { CUISINE_HOME } from "./cities";
 import type { Weather } from "./weather";
 import { INTERESTS, type InterestId } from "./interests";
-import { AXES, type Answers, type City, type Dish, type Recommendation, type Slot, type Vector } from "./types";
+import { AXES, type Activity, type Answers, type City, type Dish, type Recommendation, type Slot, type Vector } from "./types";
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
 
@@ -117,6 +117,7 @@ export function buildProfile(
   heatOverride?: number,
   weather?: Weather | null,
   interests: InterestId[] = [],
+  activity?: Activity | null,
 ): Profile {
   const target: Vector = {
     comfort: 0.5,
@@ -217,6 +218,15 @@ export function buildProfile(
       break;
   }
 
+  // Working while eating is the one activity that changes what you want, not
+  // just what you can hold: nobody wants to feel heavy halfway through an
+  // afternoon. The other two are handled as dish form, below, because
+  // "shareable" and "one-handed" are facts about a dish, not flavours.
+  if (activity === "working") {
+    target.lightness += 0.15;
+    target.indulgence -= 0.1;
+  }
+
   applyInterests(target, weights, interests);
 
   if (heatOverride !== undefined) {
@@ -254,12 +264,17 @@ function isLocal(dish: Dish, city?: City) {
 const PORTION_ORDER = { snack: 0, meal: 1, feast: 2 } as const;
 const HUNGER_TO_PORTION = { nibble: 0, meal: 1, feast: 2 } as const;
 
+/**
+ * Two of these get joined with "and", so none of them may contain one
+ * themselves. "familiar and easy" plus "a safe bet" produced "familiar and
+ * easy and a safe bet", and a third "and" arrived with the local clause.
+ */
 const REASON_TEXT: Record<keyof Vector, [string, string]> = {
-  comfort: ["familiar and easy", "unfamiliar on purpose"],
-  indulgence: ["rich enough to feel like a treat", "kept light"],
+  comfort: ["familiar", "unfamiliar on purpose"],
+  indulgence: ["rich enough to feel like a treat", "deliberately light"],
   heat: ["properly spiced", "gentle on the chilli"],
-  lightness: ["sits lightly", "substantial"],
-  novelty: ["something off your usual list", "a safe bet"],
+  lightness: ["easy to sit through", "substantial"],
+  novelty: ["off your usual list", "a safe bet"],
   sweetness: ["sweet", "savoury"],
 };
 
@@ -273,8 +288,15 @@ export function recommend(
   weather?: Weather | null,
   interests: InterestId[] = [],
   fasting = false,
+  activity: Activity | null = null,
 ): Recommendation[] {
-  const { target, weights, maxEta } = buildProfile(answers, heatOverride, weather, interests);
+  const { target, weights, maxEta } = buildProfile(
+    answers,
+    heatOverride,
+    weather,
+    interests,
+    activity,
+  );
   const wantPortion = HUNGER_TO_PORTION[answers.hunger];
   const thrifty = interests.includes("thrifty");
 
@@ -319,6 +341,21 @@ export function recommend(
       // match (0.08); at half that the preference was measurable but never
       // actually changed what came back.
       if (thrifty) score += (3 - dish.priceBand) * 0.06;
+
+      // What you are doing decides the form the food has to take. A screen is
+      // on and a fork is not welcome; a laptop is open and a dripping roll is
+      // worse than useless; people are over and a snack for one is the wrong
+      // answer however well it scores on flavour.
+      if (activity === "watching") {
+        if (dish.handheld) score += 0.09;
+        if (dish.messy) score -= 0.09;
+      } else if (activity === "working") {
+        if (dish.handheld) score += 0.05;
+        if (dish.messy) score -= 0.12;
+      } else if (activity === "company") {
+        if (dish.portion === "feast") score += 0.09;
+        if (dish.portion === "snack") score -= 0.06;
+      }
 
       const reasons = AXES.map((a) => ({
         axis: a,

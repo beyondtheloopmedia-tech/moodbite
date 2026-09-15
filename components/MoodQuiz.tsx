@@ -10,11 +10,12 @@ import InterestPicker from "./InterestPicker";
 import { useProfile } from "./useProfile";
 import SignInModal, { markSignInPromptSeen, signInPromptSeen } from "./SignInModal";
 import ProfileSetup from "./ProfileSetup";
+import ActivityPicker from "./ActivityPicker";
 import AccountBar from "./AccountBar";
 import { useSession } from "./useSession";
 import { useEventLog } from "./useEventLog";
 import { slotForHour } from "@/lib/scoring";
-import type { Answers, Slot } from "@/lib/types";
+import type { Activity, Answers, Slot } from "@/lib/types";
 
 type Key = keyof Answers;
 
@@ -91,8 +92,9 @@ export default function MoodQuiz() {
   const { city, status, km, locate, choose: chooseCity, cities, radiusKm } = useCity();
   const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
-  const { interests, toggle: toggleInterest, homeCity, saveProfile, needsSetup } =
+  const { interests, toggle: toggleInterest, homeCity, isPro, saveProfile, needsSetup } =
     useProfile(userId);
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [setupSkipped, setSetupSkipped] = useState(false);
   // A fast is a fact about today, not a standing preference, so it is session
@@ -116,6 +118,7 @@ export default function MoodQuiz() {
     day_part: dayPart,
     interests,
     heat_override: heat,
+    activity,
   };
 
   useEffect(() => setSlot(slotForHour(new Date().getHours())), []);
@@ -135,6 +138,7 @@ export default function MoodQuiz() {
           city: city?.slug,
           interests,
           fasting,
+          activity,
         }),
         });
         const data = await res.json();
@@ -147,14 +151,14 @@ export default function MoodQuiz() {
         setBusy(false);
       }
     },
-    [slot, city, interests, fasting],
+    [slot, city, interests, fasting, activity],
   );
 
   useEffect(() => {
     if (!results) return;
     void fetchResults(answers as Answers, heat);
     // answers and heat are fixed by this point; the city is what changed
-  }, [city?.slug, interests, fasting]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [city?.slug, interests, fasting, activity]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!results) return;
@@ -215,6 +219,9 @@ export default function MoodQuiz() {
         </div>
         <div className="mt-6">
           <InterestPicker interests={interests} onToggle={toggleInterest} />
+          <div className="mt-4">
+            <ActivityPicker activity={activity} isPro={isPro} onChange={setActivity} />
+          </div>
           <button
             type="button"
             onClick={() => setFasting((v) => !v)}

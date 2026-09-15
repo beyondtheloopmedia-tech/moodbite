@@ -32,6 +32,7 @@ export interface EventContext {
   day_part: string | null;
   interests: string[];
   heat_override: number | null;
+  activity: string | null;
 }
 
 export function useEventLog(userId: string | null) {

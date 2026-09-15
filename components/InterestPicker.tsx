@@ -16,7 +16,7 @@ export default function InterestPicker({
   return (
     <div>
       <p className="text-sm text-ink-soft">
-        Anything you always lean towards? Optional, and it only nudges.
+        Anything you always lean towards? Optional. It nudges; it never decides.
       </p>
       <ul className="mt-3 flex flex-wrap gap-2">
         {INTERESTS.map((i) => {

@@ -44,6 +44,7 @@ export function useProfile(userId: string | null) {
   const [diet, setDiet] = useState<Diet | null>(null);
   const [ready, setReady] = useState(false);
   const [hasProfileRow, setHasProfileRow] = useState(false);
+  const [isPro, setIsPro] = useState(false);
   const merged = useRef<string | null>(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function useProfile(userId: string | null) {
       setHomeCity(null);
       setDiet(null);
       setHasProfileRow(false);
+      setIsPro(false);
       setReady(true);
       return;
     }
@@ -63,7 +65,7 @@ export function useProfile(userId: string | null) {
     (async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("interests, home_city, diet")
+        .select("interests, home_city, diet, is_pro")
         .eq("id", userId)
         .maybeSingle();
 
@@ -80,6 +82,7 @@ export function useProfile(userId: string | null) {
       setHomeCity(data?.home_city ?? null);
       setDiet((data?.diet as Diet | null) ?? null);
       setHasProfileRow(Boolean(data));
+      setIsPro(Boolean(data?.is_pro));
 
       // First sign-in on this browser: carry what was picked while signed out
       // rather than silently discarding it for an empty profile.
@@ -157,5 +160,5 @@ export function useProfile(userId: string | null) {
   // can be set without an account, so having some is no evidence of setup.
   const needsSetup = Boolean(userId) && ready && hasProfileRow && !homeCity && !diet;
 
-  return { interests, toggle, homeCity, diet, saveProfile, ready, needsSetup };
+  return { interests, toggle, homeCity, diet, isPro, saveProfile, ready, needsSetup };
 }

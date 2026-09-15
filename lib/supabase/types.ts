@@ -19,6 +19,7 @@ export interface Database {
           home_city: string | null;
           email: string | null;
           is_admin: boolean;
+          is_pro: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -55,6 +56,7 @@ export interface Database {
           day_part: string | null;
           interests: string[] | null;
           heat_override: number | null;
+          activity: string | null;
           rank: number | null;
           shortlist_id: string | null;
           created_at: string;
@@ -77,6 +79,7 @@ export interface Database {
           day_part?: string | null;
           interests?: string[] | null;
           heat_override?: number | null;
+          activity?: string | null;
           rank?: number | null;
           shortlist_id?: string | null;
         };
