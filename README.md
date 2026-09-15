@@ -222,10 +222,20 @@ ranked by the same mood that chose the dish.
   different people it reaches*; hence the low per-client number. Run out and the
   panel says so while the order links carry on working. With no Supabase there
   is nowhere to count, so Google is never called at all.
-- **990 a month is about 33 a day.** Past that the panel goes quiet for everyone
-  until the month turns. That is the deliberate consequence of staying inside
-  the free tier while loading automatically, and it is the number to watch in
-  the admin gauge before deciding whether this feature is worth paying for.
+- **The day gets an allowance, not an average.** "About 33 a day" was
+  arithmetic, not a rule: nothing stopped a hundred people on a Friday spending
+  a third of the month before dinner. `0011_places_daily_pacing.sql` gives each
+  day *what is left divided by the days still to come*, floored at 10 and capped
+  at 45. A quiet day leaves more for tomorrow, a busy one borrows less, and the
+  budget lasts the month by construction rather than by luck. Overspend early
+  and it throttles: 600 gone by the 10th drops the day to 19.
+- **Ours has to refuse before Google's does.** The key also carries a daily
+  quota in the Cloud console, and a refusal from Google is not one this code can
+  explain — the route can only say it could not reach the restaurant list, while
+  the admin gauge cheerfully shows hundreds of calls left. Two limiters
+  disagreeing is worse than either alone, so the 45 ceiling sits under the
+  console's 50 and ours is the message people see. Set the console quota above
+  45, not below.
 - **It never demands a location.** A permission dialog landing unbidden on the
   moment somebody finally gets their answer is a bad trade, so the panel uses
   whatever is already known — a coordinate if the opening screen got one, the

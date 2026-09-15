@@ -106,7 +106,12 @@ export interface Database {
       claim_places_call: { Args: { p_bucket: string }; Returns: string };
       places_quota_status: {
         Args: Record<string, never>;
-        Returns: { used_this_month: number; monthly_cap: number; used_today: number }[];
+        Returns: {
+          used_this_month: number;
+          monthly_cap: number;
+          used_today: number;
+          daily_allowance: number;
+        }[];
       };
     };
     Enums: Record<never, never>;

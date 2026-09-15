@@ -248,7 +248,11 @@ export default async function AdminPage() {
                   value={places.used_this_month}
                   of={places.monthly_cap}
                 />
-                <Stat label="Used today" value={places.used_today} />
+                <Stat
+                  label="Used today"
+                  value={places.used_today}
+                  of={places.daily_allowance}
+                />
                 <Stat
                   label="Left this month"
                   value={Math.max(0, places.monthly_cap - places.used_this_month)}
@@ -257,8 +261,10 @@ export default async function AdminPage() {
               <p className="mt-2 text-xs text-ink-soft">
                 The cap sits under Google&apos;s 1,000 free calls a month, so this
                 feature cannot bill you as configured. Raising it means choosing to
-                pay about ₹3 a lookup; the number lives in
-                0009_places_quota.sql.
+                pay about ₹3 a lookup. Today&apos;s allowance is what is left
+                divided by the days still to come, so the budget lasts the month
+                rather than going early; both numbers live in
+                0011_places_daily_pacing.sql.
               </p>
             </div>
           )}
