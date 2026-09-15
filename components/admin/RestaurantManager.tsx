@@ -323,13 +323,21 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
     // matching no dish is never consulted. Delete these rows afterwards:
     //   delete from public.recommendation_events where dish_id like 'zzdiag:%';
     try {
-      await supabase.from("recommendation_events").insert({
-        device_id: "diagnostic",
+      // user_id, because 0018's anonymous-write policy is scoped `to anon` and
+      // a signed-in reader is not anon: a row with a null user_id is refused
+      // for them by the owner policy from 0001. The first version of this wrote
+      // no user_id and was silently rejected - which did at least prove the
+      // browser is authenticated, since an unauthenticated one would have been
+      // allowed.
+      const { error: logErr } = await supabase.from("recommendation_events").insert({
+        user_id: auth.user?.id ?? null,
+        device_id: auth.user ? null : "diagnostic",
         dish_id: `zzdiag:${wrote}`.slice(0, 400),
         action: "shown",
         rank: 1,
         shortlist_id: crypto.randomUUID(),
       });
+      if (logErr) console.error("moodbite: diagnostic write failed", logErr);
     } catch {
       // If even this cannot be written, the screen is the only copy.
     }
