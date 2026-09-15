@@ -98,6 +98,36 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      posts: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          excerpt: string | null;
+          body: string;
+          published: boolean;
+          published_at: string | null;
+          author_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          slug: string;
+          title: string;
+          excerpt?: string | null;
+          body?: string;
+          published?: boolean;
+          author_id?: string | null;
+        };
+        Update: {
+          slug?: string;
+          title?: string;
+          excerpt?: string | null;
+          body?: string;
+          published?: boolean;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: {

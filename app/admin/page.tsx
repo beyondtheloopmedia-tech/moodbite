@@ -4,6 +4,7 @@ import { CITIES } from "@/lib/cities";
 import { INTERESTS } from "@/lib/interests";
 import { DAY_PARTS } from "@/lib/daypart";
 import ResendLink from "@/components/admin/ResendLink";
+import PostEditor, { type PostRow } from "@/components/admin/PostEditor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Moodbite admin", robots: { index: false, follow: false } };
@@ -42,6 +43,7 @@ const REPORTS: { heading: string; items: { href: string; label: string }[] }[] =
   {
     heading: "Running it",
     items: [
+      { href: "#writing", label: "Writing" },
       { href: "#budget", label: "Places budget" },
       { href: "#signin", label: "Help someone in" },
     ],
@@ -125,7 +127,8 @@ export default async function AdminPage() {
 
   if (!me?.is_admin) return <Denied reason="This account is not an admin." />;
 
-  const [{ data: profiles }, { data: events }, { data: quota }] = await Promise.all([
+  const [{ data: profiles }, { data: events }, { data: quota }, { data: postRows }] =
+    await Promise.all([
     supabase
       .from("profiles")
       .select(
@@ -143,11 +146,18 @@ export default async function AdminPage() {
     // Empty for a non-admin: the function checks is_admin() itself rather than
     // trusting the guard above.
     supabase.rpc("places_quota_status"),
+    // Drafts included: the admin read policy in 0013 widens the public one.
+    supabase
+      .from("posts")
+      .select("id, slug, title, excerpt, body, published, published_at, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(100),
   ]);
 
   const rows = profiles ?? [];
   const log = events ?? [];
   const places = quota?.[0] ?? null;
+  const posts = (postRows ?? []) as PostRow[];
 
   const now = Date.now();
   const since = (days: number) =>
@@ -511,6 +521,15 @@ export default async function AdminPage() {
             </p>
           </div>
         )}
+      </section>
+
+      <section id="writing" className="mt-16 scroll-mt-8">
+        <h2 className="font-display text-xl">Writing</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Posts at /blog. A draft is visible only here; publishing makes it readable
+          by anyone, signed in or not.
+        </p>
+        <PostEditor initial={posts} />
       </section>
 
       <section id="signin" className="mt-16 max-w-lg scroll-mt-8">
