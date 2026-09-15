@@ -198,6 +198,18 @@ ranked by the same mood that chose the dish.
   time. Each rating is pulled toward the mean by a prior worth fifty reviews, so
   volume buys the right to a high average. Google's own figure is what gets
   displayed; the shrunk one only decides the order.
+- **Google's own order counts for something.** The other weights answer "is it
+  good, near, affordable"; none of them answers "does it actually serve the
+  dish", which is the one question a text search is already good at. Discarding
+  its order let a burger place win a search for hummus — checked against the
+  live API, Google had it *eighth* and put a dedicated hummus restaurant first,
+  and our score overturned that on a margin of 0.010 because 4.9 from 613
+  reviews shrinks higher than 4.6 from 938. Google's position is now worth ~15%
+  of the score: enough to settle a close call, not enough to overturn a clear
+  one, because relevance strong enough to dominate would just reproduce
+  Google's list and throw away the mood ranking. Live result: the burger place
+  fell from 1st to 5th, Hummus House took the top, and vada pav in Mumbai kept
+  the same top two.
 - **Patience picks the trade-off.** It is the one answer already about distance
   in disguise — somebody who will not wait half an hour for delivery will not
   drive across town either — so it sets how hard proximity competes with
@@ -282,9 +294,8 @@ type as restaurants — the pickle shop that came second for gongura mutton. It
 does **not** remove a restaurant that merely matches the words: searching
 hummus in Hyderabad still returns a burger place first, because Google matches
 review text and that place is genuinely typed a restaurant, and our own ranking
-then rewards its 4.9 from 613 reviews. That is a relevance problem, not a type
-problem, and the lever for it would be blending Google's own result order into
-the score, which the ranking currently discards entirely.
+then rewards its 4.9 from 613 reviews. That was a relevance problem rather than
+a type problem, and it is fixed separately, by the relevance blend above.
 
 Two fields were deliberately left out of the request. `delivery`/`takeout`/
 `dineIn` and `servesVegetarianFood` would promote the call to Google's
