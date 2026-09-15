@@ -247,6 +247,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "irani-chai-osmania",
+    placeType: null,
     name: "Irani chai and Osmania biscuits",
     cuisine: "Hyderabadi",
     searchTerm: "irani chai osmania biscuit",
@@ -262,6 +263,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "samosa-chai",
+    placeType: null,
     name: "Samosa with chai",
     cuisine: "Street food",
     searchTerm: "samosa",
@@ -278,6 +280,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "pav-bhaji",
+    placeType: null,
     name: "Pav bhaji",
     cuisine: "Street food",
     searchTerm: "pav bhaji",
@@ -295,6 +298,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "vada-pav",
+    placeType: null,
     name: "Vada pav",
     cuisine: "Street food",
     searchTerm: "vada pav",
@@ -312,6 +316,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "pani-puri",
+    placeType: null,
     name: "Pani puri",
     cuisine: "Street food",
     searchTerm: "pani puri",
@@ -630,6 +635,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "egg-bhurji-pav",
+    placeType: null,
     name: "Egg bhurji with pav",
     cuisine: "Street food",
     searchTerm: "egg bhurji pav",
@@ -676,6 +682,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "gulab-jamun",
+    placeType: null,
     name: "Gulab jamun",
     cuisine: "Indian sweets",
     searchTerm: "gulab jamun",
@@ -707,6 +714,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "brownie-icecream",
+    placeType: null,
     name: "Warm brownie with ice cream",
     cuisine: "Desserts",
     searchTerm: "brownie ice cream",
@@ -723,6 +731,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "filter-coffee",
+    placeType: null,
     name: "Filter coffee and a vada",
     cuisine: "South Indian",
     searchTerm: "filter coffee vada",
@@ -793,6 +802,7 @@ export const DISHES: Dish[] = [
   },
   {
     id: "singhare-halwa",
+    placeType: null,
     name: "Singhare ka halwa",
     cuisine: "Indian sweets",
     searchTerm: "singhare ka halwa",

@@ -269,6 +269,23 @@ ranked by the same mood that chose the dish.
   somebody, not enough to find their flat. Declining is a normal answer: the
   centroid still works and the panel says so.
 
+The nearby search is constrained to `includedType: "restaurant"`, except for
+the twenty per cent of the catalogue that is not restaurant food — street
+stalls, mithai shops, an Irani cafe — which opt out by name in `dishes.ts`.
+Those ten opt out to *nothing* rather than to `cafe` or `bakery`: picking a
+type for them would be a guess, and a wrong guess returns an empty list, which
+is worse than the occasional miscategorised result it would be fixing.
+
+What the constraint does and does not do is worth writing down, because it is
+easy to assume it fixed more than it did. It removes businesses Google does not
+type as restaurants — the pickle shop that came second for gongura mutton. It
+does **not** remove a restaurant that merely matches the words: searching
+hummus in Hyderabad still returns a burger place first, because Google matches
+review text and that place is genuinely typed a restaurant, and our own ranking
+then rewards its 4.9 from 613 reviews. That is a relevance problem, not a type
+problem, and the lever for it would be blending Google's own result order into
+the score, which the ranking currently discards entirely.
+
 Two fields were deliberately left out of the request. `delivery`/`takeout`/
 `dineIn` and `servesVegetarianFood` would promote the call to Google's
 Enterprise+Atmosphere tier for questions that proximity and an already

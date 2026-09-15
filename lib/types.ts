@@ -68,6 +68,16 @@ export interface Dish {
   /** verified Zomato dish-page slug; absent means Zomato has no page for it */
   zomatoDish?: string;
   /**
+   * What kind of business to look for when finding this nearby.
+   *
+   * Absent means "restaurant", which is right for four dishes in five and
+   * stops a pickle shop or a burger joint winning a search for hummus.
+   * Explicit `null` means do not constrain at all, for the fifth: a vada pav
+   * stall, a mithai shop and an Irani cafe are all the correct answer to their
+   * dish and none of them is a restaurant.
+   */
+  placeType?: string | null;
+  /**
    * Permitted on a Hindu fasting day (vrat): no grain flour, no onion or
    * garlic, rock salt rather than table salt. Absent means not suitable.
    */

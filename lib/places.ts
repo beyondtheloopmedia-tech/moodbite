@@ -219,10 +219,19 @@ export function rankPlaces(
  * One Text Search call. The caller has already decided it is allowed to spend
  * this, so nothing here consults a quota; see app/api/places/route.ts.
  *
- * `includedType` is deliberately not set. It only accepts a single type, and
- * pinning it to "restaurant" would drop the sweet shop that is the right
- * answer for jalebi and the cafe that is the right answer for filter coffee.
- * The dish name plus a location bias is a narrow enough query on its own.
+ * `includedType` comes from the dish rather than being fixed or absent.
+ * Unconstrained, a text search for "hummus falafel pita" returned a burger
+ * joint first and a search for gongura returned a pickle shop - Google matches
+ * the words wherever they appear, including in reviews. Pinned to "restaurant"
+ * for everything, it would instead lose the vada pav stall, the mithai shop
+ * and the Irani cafe, which are the correct answers to their dishes and none
+ * of which is a restaurant. So it defaults to "restaurant" and the twenty per
+ * cent that are not restaurant food opt out by name in dishes.ts.
+ *
+ * Those ten opt out to *nothing* rather than to "cafe" or "bakery". Picking a
+ * specific type for them would be a guess, and a wrong guess returns an empty
+ * list, which is worse than the occasional miscategorised result it would be
+ * fixing. Verifying a guess costs a billed call per dish per attempt.
  */
 export async function searchPlaces(
   dish: Dish,
@@ -243,6 +252,9 @@ export async function searchPlaces(
     },
     body: JSON.stringify({
       textQuery: dish.searchTerm,
+      // undefined is absent from the JSON entirely, which is what an
+      // unconstrained search needs; `null` would be rejected as a bad type.
+      includedType: dish.placeType === null ? undefined : (dish.placeType ?? "restaurant"),
       pageSize: 15,
       regionCode: "IN",
       languageCode: "en",
