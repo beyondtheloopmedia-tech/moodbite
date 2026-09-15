@@ -22,7 +22,16 @@ import type { Answers, Slot } from "@/lib/types";
 export interface EventContext {
   mood: Answers["mood"] | null;
   energy: Answers["energy"] | null;
+  hunger: Answers["hunger"] | null;
+  palate: Answers["palate"] | null;
+  patience: Answers["patience"] | null;
+  diet: Answers["diet"] | null;
   fasting: boolean;
+  weather: string | null;
+  temp_c: number | null;
+  day_part: string | null;
+  interests: string[];
+  heat_override: number | null;
 }
 
 export function useEventLog(userId: string | null) {

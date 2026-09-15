@@ -1,5 +1,7 @@
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { DISHES } from "@/lib/dishes";
+import { CITIES } from "@/lib/cities";
+import { DAY_PARTS } from "@/lib/daypart";
 import ResendLink from "@/components/admin/ResendLink";
 
 export const dynamic = "force-dynamic";
@@ -7,12 +9,53 @@ export const metadata = { title: "Moodbite admin", robots: { index: false, follo
 
 const DISH_NAME = new Map(DISHES.map((d) => [d.id, d.name]));
 
-const MOOD_LABEL: Record<string, string> = {
+const CITY_NAME = new Map(CITIES.map((c) => [c.slug, c.name]));
+const DAY_PART_ORDER = DAY_PARTS.map((d) => d.id);
+
+const LABEL: Record<string, string> = {
   stressed: "Stressed",
   flat: "Flat",
   fine: "Fine",
   celebrating: "Celebrating",
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  snack: "Snack",
+  dinner: "Dinner",
+  latenight: "Late night",
+  clear: "Clear",
+  cloudy: "Cloudy",
+  rain: "Rain",
+  drizzle: "Drizzle",
+  storm: "Storm",
+  fog: "Fog",
+  snow: "Snow",
 };
+
+type Tally = { shown: number; clicked: number };
+
+/**
+ * Group the log by one column and count clicks against impressions.
+ *
+ * Clicks alone would just rank whatever is shown most. The ratio is what says
+ * whether the engine was right, which is the only question this table can
+ * usefully answer.
+ */
+function groupBy(
+  log: { dish_id: string; action: string }[],
+  key: (e: never) => string | null,
+) {
+  const out = new Map<string, Map<string, Tally>>();
+  for (const e of log) {
+    const bucket = key(e as never) ?? "unrecorded";
+    if (!out.has(bucket)) out.set(bucket, new Map());
+    const dishes = out.get(bucket)!;
+    const cur = dishes.get(e.dish_id) ?? { shown: 0, clicked: 0 };
+    if (e.action === "clicked") cur.clicked += 1;
+    else cur.shown += 1;
+    dishes.set(e.dish_id, cur);
+  }
+  return out;
+}
 
 /**
  * Admin panel.
@@ -46,7 +89,9 @@ export default async function AdminPage() {
       .limit(200),
     supabase
       .from("recommendation_events")
-      .select("dish_id, action, mood, slot, city, created_at")
+      .select(
+        "dish_id, action, mood, energy, hunger, palate, patience, diet, slot, day_part, city, weather, temp_c, interests, heat_override, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(5000),
   ]);
@@ -54,22 +99,24 @@ export default async function AdminPage() {
   const rows = profiles ?? [];
   const log = events ?? [];
 
-  // Clicks per mood per dish. Impressions are the denominator that stops a
-  // dish looking popular purely because it is shown constantly.
-  const byMood = new Map<string, Map<string, { shown: number; clicked: number }>>();
-  for (const e of log) {
-    const mood = e.mood ?? "unrecorded";
-    if (!byMood.has(mood)) byMood.set(mood, new Map());
-    const dishes = byMood.get(mood)!;
-    const cur = dishes.get(e.dish_id) ?? { shown: 0, clicked: 0 };
-    if (e.action === "clicked") cur.clicked += 1;
-    else cur.shown += 1;
-    dishes.set(e.dish_id, cur);
-  }
-
-  const moodOrder = ["stressed", "flat", "fine", "celebrating", "unrecorded"].filter((m) =>
-    byMood.has(m),
+  const byMood = groupBy(log, (e: { mood: string | null }) => e.mood);
+  const byCity = groupBy(log, (e: { city: string | null }) => e.city);
+  const byDayPart = groupBy(log, (e: { day_part: string | null; slot: string | null }) =>
+    e.day_part ?? e.slot,
   );
+  const byWeather = groupBy(log, (e: { weather: string | null }) => e.weather);
+
+  const ordered = (m: Map<string, Map<string, Tally>>, first: string[]) =>
+    [...m.keys()].sort((a, b) => {
+      const ia = first.indexOf(a);
+      const ib = first.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+
+  // The slider is the reader overruling the engine, so it is worth its own count.
+  const overrides = log.filter(
+    (e: { heat_override: number | null }) => e.heat_override !== null,
+  ).length;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:px-10">
@@ -120,44 +167,30 @@ export default async function AdminPage() {
       </section>
 
       <section className="mt-12">
-        <h2 className="font-display text-xl">What gets ordered, by mood</h2>
+        <h2 className="font-display text-xl">What gets ordered</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Clicks against impressions, from {log.length} logged event
           {log.length === 1 ? "" : "s"}. A dish with many impressions and no clicks is
           the engine being confidently wrong.
+          {overrides > 0 && (
+            <>
+              {" "}
+              The heat slider was moved on {overrides} of them, which is a reader
+              correcting the engine outright.
+            </>
+          )}
         </p>
 
-        {moodOrder.length === 0 && (
+        {log.length === 0 && (
           <p className="mt-4 text-sm text-ink-soft">
             Nothing logged yet. Events are only recorded for signed-in users.
           </p>
         )}
 
-        <div className="mt-4 grid gap-8 sm:grid-cols-2">
-          {moodOrder.map((mood) => {
-            const dishes = [...byMood.get(mood)!.entries()]
-              .sort((a, b) => b[1].clicked - a[1].clicked || b[1].shown - a[1].shown)
-              .slice(0, 8);
-            return (
-              <div key={mood}>
-                <h3 className="font-display text-lg">{MOOD_LABEL[mood] ?? "Not recorded"}</h3>
-                <ul className="mt-2">
-                  {dishes.map(([dishId, c]) => (
-                    <li
-                      key={dishId}
-                      className="flex items-baseline justify-between gap-3 border-b border-ink/10 py-1.5"
-                    >
-                      <span>{DISH_NAME.get(dishId) ?? dishId}</span>
-                      <span className="shrink-0 tabular-nums text-ink-soft">
-                        {c.clicked}/{c.shown}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
+        <Breakdown title="By mood" groups={byMood} keys={ordered(byMood, ["stressed", "flat", "fine", "celebrating"])} />
+        <Breakdown title="By time of day" groups={byDayPart} keys={ordered(byDayPart, DAY_PART_ORDER)} />
+        <Breakdown title="By city" groups={byCity} keys={ordered(byCity, [...CITY_NAME.keys()])} name={(k) => CITY_NAME.get(k) ?? k} />
+        <Breakdown title="By weather" groups={byWeather} keys={ordered(byWeather, ["clear", "cloudy", "rain", "drizzle", "storm", "fog", "snow"])} />
       </section>
 
       <section className="mt-12 max-w-lg">
@@ -170,6 +203,52 @@ export default async function AdminPage() {
         <ResendLink />
       </section>
     </main>
+  );
+}
+
+function Breakdown({
+  title,
+  groups,
+  keys,
+  name,
+}: {
+  title: string;
+  groups: Map<string, Map<string, Tally>>;
+  keys: string[];
+  name?: (key: string) => string;
+}) {
+  if (keys.length === 0) return null;
+  return (
+    <div className="mt-8">
+      <h3 className="font-display text-lg">{title}</h3>
+      <div className="mt-3 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+        {keys.map((key) => {
+          const dishes = [...groups.get(key)!.entries()]
+            .sort((a, b) => b[1].clicked - a[1].clicked || b[1].shown - a[1].shown)
+            .slice(0, 6);
+          return (
+            <div key={key}>
+              <h4 className="text-sm text-ink-soft">
+                {name?.(key) ?? LABEL[key] ?? (key === "unrecorded" ? "Not recorded" : key)}
+              </h4>
+              <ul className="mt-1">
+                {dishes.map(([dishId, c]) => (
+                  <li
+                    key={dishId}
+                    className="flex items-baseline justify-between gap-3 border-b border-ink/10 py-1.5 text-sm"
+                  >
+                    <span>{DISH_NAME.get(dishId) ?? dishId}</span>
+                    <span className="shrink-0 tabular-nums text-ink-soft">
+                      {c.clicked}/{c.shown}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

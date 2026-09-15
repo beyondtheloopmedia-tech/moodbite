@@ -87,13 +87,31 @@ export default function MoodQuiz() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { city, status, km, locate, choose: chooseCity, cities, radiusKm } = useCity();
-  const { now, greeting, weather, weatherLine } = useAmbience(city);
+  const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
   const { interests, toggle: toggleInterest } = useProfile(userId);
   // A fast is a fact about today, not a standing preference, so it is session
   // state and is never persisted.
   const [fasting, setFasting] = useState(false);
   const { logShown, logClicked } = useEventLog(userId);
+
+  // Everything recommend() reads, captured at the moment it ran. Kept in one
+  // place because two call sites drifting apart is exactly how the log ended
+  // up with moods on clicks and not on impressions.
+  const eventContext = {
+    mood: answers.mood ?? null,
+    energy: answers.energy ?? null,
+    hunger: answers.hunger ?? null,
+    palate: answers.palate ?? null,
+    patience: answers.patience ?? null,
+    diet: answers.diet ?? null,
+    fasting,
+    weather: weather?.condition ?? null,
+    temp_c: weather?.tempC ?? null,
+    day_part: dayPart,
+    interests,
+    heat_override: heat,
+  };
 
   useEffect(() => setSlot(slotForHour(new Date().getHours())), []);
 
@@ -135,12 +153,10 @@ export default function MoodQuiz() {
 
   useEffect(() => {
     if (!results) return;
-    logShown(results.map((r) => r.dish.id), city?.slug ?? null, slot, {
-      mood: answers.mood ?? null,
-      energy: answers.energy ?? null,
-      fasting,
-    });
-  }, [results, city?.slug, slot, logShown, answers.mood, answers.energy, fasting]);
+    logShown(results.map((r) => r.dish.id), city?.slug ?? null, slot, eventContext);
+    // eventContext is rebuilt each render; `results` changing is the signal a
+    // new shortlist exists, and logShown de-duplicates anything repeated.
+  }, [results, city?.slug, slot, logShown]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function choose(key: Key, value: string) {
     const next = { ...answers, [key]: value } as Partial<Answers>;
@@ -288,11 +304,7 @@ export default function MoodQuiz() {
           city={city}
           weatherNote={weatherNote}
           onOrder={(dishId) =>
-            logClicked(dishId, city?.slug ?? null, slot, {
-              mood: answers.mood ?? null,
-              energy: answers.energy ?? null,
-              fasting,
-            })
+            logClicked(dishId, city?.slug ?? null, slot, eventContext)
           }
           cityBar={
             <CityBar

@@ -45,7 +45,16 @@ export interface Database {
           action: "shown" | "clicked";
           mood: string | null;
           energy: string | null;
+          hunger: string | null;
+          palate: string | null;
+          patience: string | null;
+          diet: string | null;
           fasting: boolean | null;
+          weather: string | null;
+          temp_c: number | null;
+          day_part: string | null;
+          interests: string[] | null;
+          heat_override: number | null;
           created_at: string;
         };
         Insert: {
@@ -56,7 +65,16 @@ export interface Database {
           action: "shown" | "clicked";
           mood?: string | null;
           energy?: string | null;
+          hunger?: string | null;
+          palate?: string | null;
+          patience?: string | null;
+          diet?: string | null;
           fasting?: boolean | null;
+          weather?: string | null;
+          temp_c?: number | null;
+          day_part?: string | null;
+          interests?: string[] | null;
+          heat_override?: number | null;
         };
         Update: never;
         Relationships: [];

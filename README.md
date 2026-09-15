@@ -218,6 +218,23 @@ sends them a fresh one-time code, which goes to *their* address and never to
 the admin: an admin can get a user back in without ever being able to get in
 as them.
 
+### The log records what shaped the answer
+
+`recommend()` reads nine things: the six answers, the time slot, the city, the
+weather, the standing preferences, the fasting flag and the heat slider. The
+log kept four of them, so a row could say what was suggested but not enough to
+reconstruct why - which makes the click stream useless for the one job it
+exists to do.
+
+`0003` adds the rest: `hunger`, `palate`, `patience`, `diet`, `weather`,
+`temp_c`, `day_part`, `interests` and `heat_override`. The admin panel breaks
+the log down by mood, time of day, city and weather, and counts how often the
+heat slider was moved, since that is a reader overruling the engine outright.
+
+The context is assembled in one place in `MoodQuiz`. Two call sites building it
+separately is exactly how impressions ended up without a mood while clicks had
+one.
+
 ### The mood data had to be recorded first
 
 `recommendation_events` logged what was shown and clicked but not the mood it
