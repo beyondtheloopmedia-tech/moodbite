@@ -99,10 +99,22 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
           .select()
           .eq("slug", fields.slug!)
           .maybeSingle();
-        // No row back is not a failure. The write happened; we just cannot see
-        // it, so the list is filled from what was sent rather than from what
-        // the database would show us.
-        data = back.data ?? { ...fields, id: id || `pending-${fields.slug}` };
+        if (back.data) {
+          data = back.data;
+        } else {
+          // A write that reports no error and then cannot be found is not a
+          // success, and this used to substitute the submitted fields and say
+          // "Saved" - which meant three rounds of diagnosis were run against a
+          // screen confidently reporting something that had not happened.
+          //
+          // Either the row is not there, or it is there and unreadable. Both
+          // are worth saying out loud, and neither is worth pretending about.
+          error = {
+            message:
+              "The write reported no error, but the row cannot be read back — so it either did not save or is invisible to this account. Nothing has been confirmed.",
+            code: back.error?.code ?? "UNCONFIRMED",
+          };
+        }
       }
     } catch (e) {
       error = { message: e instanceof Error ? e.message : "The request did not complete." };
