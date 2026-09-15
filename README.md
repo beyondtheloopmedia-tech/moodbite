@@ -125,8 +125,12 @@ that renders has to know.
 Optional, and only ever changes *where* preferences are kept. There is no signup
 wall: signed out, the app is exactly what it was.
 
-- Sign-in is a magic link. No password to store, no OAuth provider to configure,
-  no reset flow to build.
+- Sign-in sits top right, on the clock row, and says **Sign in**. It previously
+  read "Keep these across devices" and sat below the fold under the preference
+  chips, where it was mistaken for a description rather than a control and went
+  unfound.
+- Sign-in is a six digit code, or a magic link. No password to store, no OAuth
+  provider to configure, no reset flow to build.
 - Signed in, preferences live in the `profiles` row and follow you between devices.
   localStorage is still written, so signing out does not feel like losing settings.
 - Picking preferences while signed out and *then* signing in carries them up into

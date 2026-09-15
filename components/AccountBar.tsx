@@ -5,7 +5,10 @@ import type { AuthState } from "./useSession";
 
 /**
  * Sign-in, and nothing more. There is no signup wall: an account only changes
- * where preferences are kept, so this stays a quiet line rather than a gate.
+ * where preferences are kept, so it stays a quiet header link rather than a
+ * gate. It says "Sign in" because that is the word people scan for - phrased
+ * as "Keep these across devices" it read as a description, not a control, and
+ * went unfound.
  */
 export default function AccountBar({
   state,
@@ -31,8 +34,8 @@ export default function AccountBar({
 
   if (state === "signedIn") {
     return (
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-ink-soft">
-        <span>Saved to {email}</span>
+      <div className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-sm text-ink-soft">
+        <span className="hidden sm:inline">Saved to {email}</span>
         <button onClick={onSignOut} className="text-ink underline underline-offset-4">
           Sign out
         </button>
@@ -47,7 +50,7 @@ export default function AccountBar({
           e.preventDefault();
           if (code.trim().length >= 6) onVerify(value.trim(), code.trim());
         }}
-        className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-ink-soft"
+        className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-sm text-ink-soft"
       >
         <label htmlFor="code" className="sr-only">
           Six digit code from the email
@@ -74,12 +77,13 @@ export default function AccountBar({
 
   if (!open) {
     return (
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-ink-soft">
-        <button onClick={() => setOpen(true)} className="text-ink underline underline-offset-4">
-          Keep these across devices
-        </button>
-        <span>Optional.</span>
-      </div>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-sm text-ink underline underline-offset-4"
+        title="Optional. Keeps your preferences across devices."
+      >
+        Sign in
+      </button>
     );
   }
 
@@ -89,7 +93,7 @@ export default function AccountBar({
         e.preventDefault();
         if (value.includes("@")) onSend(value.trim());
       }}
-      className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-ink-soft"
+      className="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-1 text-sm text-ink-soft"
     >
       <label htmlFor="email" className="sr-only">
         Email address

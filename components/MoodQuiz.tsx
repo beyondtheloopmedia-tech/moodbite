@@ -202,16 +202,6 @@ export default function MoodQuiz() {
           >
             Fasting today
           </button>
-          <div className="mt-3">
-            <AccountBar
-              state={authState}
-              email={email}
-              problem={problem}
-              onSend={sendLink}
-              onVerify={verifyCode}
-              onSignOut={signOut}
-            />
-          </div>
         </div>
         <button
           onClick={() => {
@@ -317,7 +307,17 @@ export default function MoodQuiz() {
 
   return (
     <div className="w-full">
-      <AmbienceBar now={now} greeting={greeting} weather={weather} weatherLine={weatherLine} />
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <AmbienceBar now={now} greeting={greeting} weather={weather} weatherLine={weatherLine} />
+        <AccountBar
+          state={authState}
+          email={email}
+          problem={problem}
+          onSend={sendLink}
+          onVerify={verifyCode}
+          onSignOut={signOut}
+        />
+      </div>
       <div className="mt-8">{body()}</div>
     </div>
   );
