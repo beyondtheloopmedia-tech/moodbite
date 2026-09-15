@@ -30,13 +30,18 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
   const [draft, setDraft] = useState<typeof BLANK | null>(null);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  // Saving a draft and publishing look identical once the form closes, which
+  // is how a post can sit unpublished while its author believes otherwise.
+  // This says which of the two just happened, in those words.
+  const [notice, setNotice] = useState<string | null>(null);
 
   // The slug follows the title only until the post exists. After that it is
   // frozen: every link anyone has shared depends on it, and a silent rename
   // breaks all of them at once.
   const locked = Boolean(draft?.id);
 
-  const edit = (p: PostRow) =>
+  const edit = (p: PostRow) => {
+    setNotice(null);
     setDraft({
       id: p.id,
       slug: p.slug,
@@ -45,6 +50,7 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
       body: p.body,
       published: p.published,
     });
+  };
 
   async function save() {
     if (!supabase || !draft) return;
@@ -78,11 +84,51 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
       return;
     }
     const row = data as PostRow;
+    absorb(row);
+    setNotice(
+      row.published
+        ? `Published. Anyone can read it at /blog/${row.slug}.`
+        : `Saved as a draft. Nobody can see it yet — publish it from the list below.`,
+    );
+    setDraft(null);
+  }
+
+  function absorb(row: PostRow) {
     setPosts((prev) => {
       const without = prev.filter((p) => p.id !== row.id);
       return [row, ...without].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     });
-    setDraft(null);
+  }
+
+  /**
+   * Publish or retract straight from the list.
+   *
+   * The checkbox inside the editor was the only way to do this, which meant
+   * publishing required opening a post, finding a tickbox below the body, and
+   * saving again. Three steps to change one boolean is how drafts stay drafts.
+   */
+  async function togglePublished(post: PostRow) {
+    if (!supabase) return;
+    setSaving(true);
+    setProblem(null);
+    const { data, error } = await supabase
+      .from("posts")
+      .update({ published: !post.published })
+      .eq("id", post.id)
+      .select()
+      .single();
+    setSaving(false);
+    if (error) {
+      setProblem(error.message);
+      return;
+    }
+    const row = data as PostRow;
+    absorb(row);
+    setNotice(
+      row.published
+        ? `Published. Anyone can read it at /blog/${row.slug}.`
+        : `Retracted. It is a draft again and nobody can see it.`,
+    );
   }
 
   if (!supabase) {
@@ -171,6 +217,10 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
 
   return (
     <div className="mt-4">
+      {notice && (
+        <p className="mb-4 border-l-2 border-ink pl-3 text-sm text-ink-soft">{notice}</p>
+      )}
+      {problem && <p className="mb-4 text-sm text-chilli">{problem}</p>}
       <button
         onClick={() => setDraft({ ...BLANK })}
         className="font-display border border-ink px-5 py-2.5 text-base transition-colors hover:bg-sage-deep"
@@ -198,18 +248,31 @@ export default function PostEditor({ initial }: { initial: PostRow[] }) {
                       /blog/{p.slug}
                     </a>
                   ) : (
-                    <span>draft · /blog/{p.slug}</span>
+                    <>
+                      {/* Loud on purpose. A draft that looks like a published
+                          post is the failure this list exists to prevent. */}
+                      <span className="mr-1.5 border border-chilli px-1.5 py-0.5 text-xs uppercase tracking-wide text-chilli">
+                        draft
+                      </span>
+                      <span>not visible to anyone · /blog/{p.slug}</span>
+                    </>
                   )}
                   {" · "}
                   {readingMinutes(p.body)} min
                 </p>
               </div>
-              <button
-                onClick={() => edit(p)}
-                className="shrink-0 border-b border-ink pb-0.5 text-sm"
-              >
-                Edit
-              </button>
+              <div className="flex shrink-0 items-baseline gap-3">
+                <button
+                  onClick={() => togglePublished(p)}
+                  disabled={saving}
+                  className="border-b border-ink pb-0.5 text-sm disabled:opacity-50"
+                >
+                  {p.published ? "Retract" : "Publish"}
+                </button>
+                <button onClick={() => edit(p)} className="border-b border-ink pb-0.5 text-sm">
+                  Edit
+                </button>
+              </div>
             </li>
           ))}
         </ul>
