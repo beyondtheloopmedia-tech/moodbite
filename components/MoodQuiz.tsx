@@ -90,7 +90,18 @@ export default function MoodQuiz() {
   const [heat, setHeat] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { city, status, km, coords, locate, choose: chooseCity, cities, radiusKm } = useCity();
+  const {
+    city,
+    status,
+    km,
+    coords,
+    coordsStatus,
+    locate,
+    refineCoords,
+    choose: chooseCity,
+    cities,
+    radiusKm,
+  } = useCity();
   const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
   const {
@@ -359,6 +370,8 @@ export default function MoodQuiz() {
               hunger={answers.hunger ?? null}
               interests={interests}
               busy={busy}
+              coordsStatus={coordsStatus}
+              onLocate={refineCoords}
             />
           }
           heat={heat}

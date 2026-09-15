@@ -32,11 +32,24 @@ export type CityStatus =
  */
 const COARSE = 100; // two decimal places, roughly a kilometre
 
+const coarse = (n: number) => Math.round(n * COARSE) / COARSE;
+
+/**
+ * Whether we have a usable coordinate, separately from which city is selected.
+ *
+ * These are different questions and used to be conflated. Somebody returning
+ * with a city saved from last time has a city and no coordinate at all, and
+ * "near me" computed from a city centroid is not near them: the centre of
+ * Hyderabad is fifteen kilometres from most of Hyderabad.
+ */
+export type CoordsStatus = "idle" | "asking" | "ok" | "denied";
+
 export function useCity() {
   const [city, setCity] = useState<City | null>(null);
   const [status, setStatus] = useState<CityStatus>("idle");
   const [km, setKm] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [coordsStatus, setCoordsStatus] = useState<CoordsStatus>("idle");
 
   // a city picked by hand outlives the session; a located one is re-read each time
   useEffect(() => {
@@ -58,8 +71,11 @@ export function useCity() {
     setCity(found);
     setStatus("chosen");
     setKm(null);
-    // naming a city overrides wherever the device thinks it is
+    // Naming a city overrides wherever the device thinks it is, and rightly:
+    // somebody in Delhi asking about Mumbai wants the centre of Mumbai, not a
+    // radius drawn around themselves.
     setCoords(null);
+    setCoordsStatus("idle");
     try {
       localStorage.setItem(STORAGE_KEY, found.slug);
     } catch {
@@ -81,10 +97,8 @@ export function useCity() {
         );
         setKm(distance);
         // rounded here, at the only point the precise value exists
-        setCoords({
-          lat: Math.round(pos.coords.latitude * COARSE) / COARSE,
-          lon: Math.round(pos.coords.longitude * COARSE) / COARSE,
-        });
+        setCoords({ lat: coarse(pos.coords.latitude), lon: coarse(pos.coords.longitude) });
+        setCoordsStatus("ok");
         if (near) {
           setCity(match);
           setStatus("located");
@@ -94,10 +108,55 @@ export function useCity() {
           setStatus("far");
         }
       },
-      (err) => setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "unavailable"),
+      (err) => {
+        setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "unavailable");
+        setCoordsStatus("denied");
+      },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
     );
   }, []);
 
-  return { city, status, km, coords, locate, choose, cities: CITIES, radiusKm: LOCAL_RADIUS_KM };
+  /**
+   * Ask for a coordinate without touching the chosen city.
+   *
+   * `locate` picks the city as well, which is right on the opening screen and
+   * wrong later: somebody who has already said "Mumbai" should not have that
+   * silently rewritten because a permission prompt finally got answered. This
+   * is for the one place that genuinely needs a point rather than a city, and
+   * it resolves to a terminal state either way so the caller never hangs.
+   */
+  const refineCoords = useCallback(() => {
+    if (coords) {
+      setCoordsStatus("ok");
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setCoordsStatus("denied");
+      return;
+    }
+    setCoordsStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: coarse(pos.coords.latitude), lon: coarse(pos.coords.longitude) });
+        setCoordsStatus("ok");
+      },
+      // Declining is a normal answer, not a failure. The city centroid is the
+      // fallback and the panel says so rather than claiming to be near anyone.
+      () => setCoordsStatus("denied"),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
+    );
+  }, [coords]);
+
+  return {
+    city,
+    status,
+    km,
+    coords,
+    coordsStatus,
+    locate,
+    refineCoords,
+    choose,
+    cities: CITIES,
+    radiusKm: LOCAL_RADIUS_KM,
+  };
 }

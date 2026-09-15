@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Place } from "@/lib/places";
 import type { Answers, City } from "@/lib/types";
 import type { InterestId } from "@/lib/interests";
+import type { CoordsStatus } from "./useCity";
 
 type State =
+  | { kind: "asking" }
   | { kind: "loading" }
-  | { kind: "done"; places: Place[] }
+  | { kind: "done"; places: Place[]; from: "you" | "city" }
   | { kind: "quiet"; message: string };
 
 /**
@@ -34,6 +36,8 @@ export default function NearbyPlaces({
   hunger,
   interests,
   busy,
+  coordsStatus,
+  onLocate,
 }: {
   dishId: string;
   dishName: string;
@@ -45,6 +49,9 @@ export default function NearbyPlaces({
   interests: InterestId[];
   /** a recommendation is in flight, so the dish underneath is about to change */
   busy: boolean;
+  coordsStatus: CoordsStatus;
+  /** asks for a coordinate without rewriting the city the reader chose */
+  onLocate: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -121,7 +128,11 @@ export default function NearbyPlaces({
         });
         return;
       }
-      settle({ kind: "done", places: data.places as Place[] });
+      settle({
+        kind: "done",
+        places: data.places as Place[],
+        from: data.from === "you" ? "you" : "city",
+      });
     } catch {
       settle({ kind: "quiet", message: "Could not reach the restaurant list just now." });
     }
@@ -137,6 +148,19 @@ export default function NearbyPlaces({
     // about to move. Waiting for that avoids paying for the intermediate state
     // where the city is new and the dish is still the old city's.
     if (busy) return;
+
+    // "Near me" is the one thing in this app that genuinely needs a point
+    // rather than a city, so this is the honest moment to ask for one - not
+    // the opening screen, where nothing yet depends on it. Asked once, and
+    // declining is fine: the city centroid answers, and the header below says
+    // that is what happened rather than claiming to be near anyone.
+    if (coordsStatus === "idle") {
+      setState({ kind: "asking" });
+      onLocate();
+      return;
+    }
+    if (coordsStatus === "asking") return;
+
     if (fetched.current === signature) return;
 
     // The tap itself should feel immediate. Everything after it is debounced,
@@ -148,17 +172,21 @@ export default function NearbyPlaces({
       void look();
     }, delay);
     return () => clearTimeout(timer);
-  }, [opened, busy, signature, look]);
+  }, [opened, busy, coordsStatus, signature, look, onLocate]);
 
   if (!opened) {
     return (
       <button
         onClick={() => setOpened(true)}
-        className="mt-6 border-b border-ink pb-0.5 text-left text-sm transition-colors hover:text-chilli"
+        className="font-display mt-3 border border-ink px-6 py-3 text-base transition-colors hover:bg-sage-deep"
       >
         Who does this well near me?
       </button>
     );
+  }
+
+  if (state.kind === "asking") {
+    return <p className="mt-6 text-sm text-ink-soft">Finding you.</p>;
   }
 
   if (state.kind === "loading") {
@@ -173,7 +201,13 @@ export default function NearbyPlaces({
     <div className="mt-8 border-t border-ink/20">
       <p className="pt-6 text-sm text-ink-soft">
         Good at {dishName.toLowerCase()}
-        {cityName ? ` in ${cityName}` : ""}, closest and best first
+        {cityName ? ` in ${cityName}` : ""},{" "}
+        {/* Distances are measured from whatever the search was centred on, so
+            the label has to say which. Calling a centroid "from you" would be
+            wrong by the width of a city. */}
+        {state.from === "you"
+          ? "nearest to you first"
+          : `measured from the middle of ${cityName ?? "the city"}`}
       </p>
       <ul className="mt-2">
         {state.places.map((p) => (

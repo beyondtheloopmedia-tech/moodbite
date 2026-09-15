@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { findCity } from "@/lib/cities";
+import { LOCAL_RADIUS_KM, findCity, haversineKm } from "@/lib/cities";
 import { DISHES } from "@/lib/dishes";
 import { parseInterests } from "@/lib/interests";
 import {
@@ -72,20 +72,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown dish." }, { status: 400 });
   }
 
-  // Where to look. A precise fix gets a tight radius; a city gets a loose one
-  // centred on the city, which is what someone who only picked from the list
-  // has actually told us.
+  const city = typeof body.city === "string" ? findCity(body.city) : undefined;
+  if (typeof body.city === "string" && !city) {
+    return NextResponse.json({ error: "We do not deliver to that city yet." }, { status: 400 });
+  }
+
+  // Where to look, and how honestly we can describe it afterwards.
+  //
+  // A real fix gets a tight radius drawn around the person. A city alone gets a
+  // loose one drawn around the city centre, which is a different claim: the
+  // centre of Hyderabad is fifteen kilometres from most of Hyderabad, so a
+  // distance measured from it is not a distance from anybody. `from` travels
+  // back so the panel can say which of the two it did.
   let center: Coords | null = null;
   let radiusKm = RADIUS_CITY_KM;
+  let from: "you" | "city" = "city";
+
   const c = body.coords as { lat?: unknown; lon?: unknown } | undefined;
   if (typeof c?.lat === "number" && typeof c?.lon === "number") {
-    center = { lat: coarse(c.lat), lon: coarse(c.lon) };
-    radiusKm = RADIUS_NEAR_KM;
-  } else if (typeof body.city === "string") {
-    const city = findCity(body.city);
-    if (!city) {
-      return NextResponse.json({ error: "We do not deliver to that city yet." }, { status: 400 });
+    const point = { lat: coarse(c.lat), lon: coarse(c.lon) };
+    // A coordinate is only relevant to the city being asked about. Somebody in
+    // Delhi looking up Mumbai wants the centre of Mumbai, and honouring their
+    // position there would search the wrong end of the country.
+    const stale = city && haversineKm(point.lat, point.lon, city.lat, city.lon) > LOCAL_RADIUS_KM;
+    if (!stale) {
+      center = point;
+      radiusKm = RADIUS_NEAR_KM;
+      from = "you";
     }
+  }
+  if (!center && city) {
     center = { lat: city.lat, lon: city.lon };
   }
   if (!center) {
@@ -129,5 +145,5 @@ export async function POST(req: Request) {
 
   const places = rankPlaces(raw, center, answers, parseInterests(body.interests), radiusKm);
 
-  return NextResponse.json({ places, dishId: dish.id });
+  return NextResponse.json({ places, dishId: dish.id, from });
 }

@@ -218,11 +218,23 @@ ranked by the same mood that chose the dish.
   daily cap of 8, both server side because the anon key is public. Run out and
   the panel says so and the order links carry on working. With no Supabase there
   is nowhere to count, so Google is never called at all.
+- **Location is asked for where it is actually needed.** "Near me" is the only
+  thing in the app that needs a point rather than a city, so the panel asks on
+  the first tap rather than the opening screen — and asks without rewriting the
+  city the reader chose. Before this, anyone returning with a city saved from
+  last visit was never located at all, and their distances were measured from
+  the city centre: Gachibowli is 16km from the middle of Hyderabad, so "2.2km
+  away" was 2.2km from nobody.
+- **A coordinate is only used where it is relevant.** More than 120km from the
+  city being asked about and it is dropped for the centroid, because somebody in
+  Delhi looking up Mumbai wants the middle of Mumbai, not a radius around
+  themselves. The header then says which of the two it measured from — calling a
+  centroid "nearest to you" would be wrong by the width of a city.
 - **The coordinate is blunted at source.** `useCity` rounds the browser's
   reading to two decimal places — about a kilometre — inside the geolocation
   callback, and the exact figure is discarded there. Enough to search around
-  somebody, not enough to find their flat. Pick a city by hand instead and only
-  the city centroid is used.
+  somebody, not enough to find their flat. Declining is a normal answer: the
+  centroid still works and the panel says so.
 
 Two fields were deliberately left out of the request. `delivery`/`takeout`/
 `dineIn` and `servesVegetarianFood` would promote the call to Google's
