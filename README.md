@@ -306,6 +306,23 @@ field sits in; check before adding one.
 Set `GOOGLE_PLACES_KEY` (see `.env.example`) to switch it on. Server side only —
 a Places key in the browser bundle gets scraped and billed.
 
+## Three ways out, not two
+
+Swiggy and Zomato answer "who will bring it". Google Maps answers "where can I
+go and eat it", which nothing on the page did as a *link* — the restaurant panel
+answers it, but the panel is capped at a few dozen lookups a day and the link is
+not. When that cap is reached the panel says so and points at the button, which
+is free, needs no key, and never runs out.
+
+It uses Google's documented `/maps/search/?api=1&query=` form with the city's
+display name rather than its slug: this one is read by a search engine rather
+than matched against a path, so "Delhi NCR" finds more than "ncr" does.
+
+Deliberately not a tab. Swiggy and Zomato are exits, not views — there is no
+Swiggy content to render — so a tab for either would contain a single button,
+and a tab for the restaurant list would put one more click in front of the only
+thing on the page with content in it.
+
 ## Asking again without starting again
 
 "Show me something else" re-runs the same answers with the dishes already seen

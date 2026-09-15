@@ -149,14 +149,16 @@ export default function NearbyPlaces({
       if (data.capped === "month") {
         settle({
           kind: "quiet",
-          message: "That is this month's restaurant lookups used up. The order links still work.",
+          message:
+            "That is this month's restaurant lookups used up. The Google Maps link above still finds them.",
         });
         return;
       }
       if (data.capped === "day") {
         settle({
           kind: "quiet",
-          message: "That is today's restaurant lookups used up. Try again tomorrow.",
+          message:
+            "That is today's restaurant lookups used up. The Google Maps link above still finds them.",
         });
         return;
       }

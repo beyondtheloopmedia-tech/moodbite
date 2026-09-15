@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { SLOT_LABEL } from "@/lib/scoring";
 
 export interface ResultItem extends Recommendation {
-  links: { swiggy: string; zomato: string };
+  links: { swiggy: string; zomato: string; maps: string };
 }
 
 const PORTION_WORD = { snack: "a small plate", meal: "a full meal", feast: "a big spread" } as const;
@@ -108,6 +108,18 @@ export default function Results({
           className="border border-ink px-6 py-3 font-display text-base transition-colors hover:bg-sage-deep"
         >
           Find it on Zomato
+        </a>
+        {/* The only one of the three that answers "where can I go and eat
+            this". It also outlives the restaurant panel below, which is capped
+            per day; this link is free and never runs out. */}
+        <a
+          href={top.links.maps}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => onOrder(top.dish.id)}
+          className="border border-ink px-6 py-3 font-display text-base transition-colors hover:bg-sage-deep"
+        >
+          Find it on Google Maps
         </a>
       </div>
 

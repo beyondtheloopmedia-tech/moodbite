@@ -42,6 +42,13 @@ export const getSource = () => active;
  *
  * Swiggy has no city or dish in its URL; it resolves both from the user's own
  * session and saved address, so its link is the same everywhere.
+ *
+ * Google Maps uses the documented /maps/search/?api=1 form, which takes a plain
+ * query and needs no key. That matters twice over: it is the only one of the
+ * three that answers "where can I go and eat this" rather than "who will bring
+ * it", and unlike the restaurant panel it costs nothing and never runs out. The
+ * panel is capped at a few dozen lookups a day; this link is what is still
+ * standing when that cap is reached.
  */
 export function orderLinks(dish: Dish, city?: City) {
   const q = encodeURIComponent(dish.searchTerm);
@@ -55,8 +62,15 @@ export function orderLinks(dish: Dish, city?: City) {
     zomato = "https://www.zomato.com/";
   }
 
+  // The city name rather than the slug: this is read by a search engine, not
+  // matched against a path, and "Delhi NCR" finds more than "ncr" does.
+  const mapsQuery = encodeURIComponent(
+    city ? `${dish.searchTerm} ${city.name}` : dish.searchTerm,
+  );
+
   return {
     swiggy: `https://www.swiggy.com/search?query=${q}`,
     zomato,
+    maps: `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
   };
 }
