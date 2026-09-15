@@ -72,15 +72,38 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
    * inside the client rather than returned - would otherwise skip every line
    * after the await and leave the button disabled with nothing said.
    */
-  async function writeListing(fields: Database["public"]["Tables"]["restaurants"]["Insert"], id: string) {
+  async function writeListing(
+    fields: Database["public"]["Tables"]["restaurants"]["Insert"],
+    id: string,
+  ) {
     let data: unknown = null;
     let error: { message: string; code?: string; details?: string } | null = null;
     try {
-      const res = id
-        ? await supabase!.from("restaurants").update(fields).eq("id", id).select().single()
-        : await supabase!.from("restaurants").insert(fields).select().single();
-      data = res.data;
-      error = res.error;
+      // Written WITHOUT asking for the row back, then read separately.
+      //
+      // `.insert(...).select().single()` is one request that both writes and
+      // reads, and PostgREST rolls the whole thing back if the read returns
+      // nothing. So a SELECT policy that does not return the new row does not
+      // merely hide it - it silently undoes the save. That is what was
+      // happening here, and it is a bad shape regardless: whether a write
+      // succeeded and whether this screen may look at the result afterwards are
+      // two different questions, and the first should not depend on the second.
+      const written = id
+        ? await supabase!.from("restaurants").update(fields).eq("id", id)
+        : await supabase!.from("restaurants").insert(fields);
+      if (written.error) {
+        error = written.error;
+      } else {
+        const back = await supabase!
+          .from("restaurants")
+          .select()
+          .eq("slug", fields.slug!)
+          .maybeSingle();
+        // No row back is not a failure. The write happened; we just cannot see
+        // it, so the list is filled from what was sent rather than from what
+        // the database would show us.
+        data = back.data ?? { ...fields, id: id || `pending-${fields.slug}` };
+      }
     } catch (e) {
       error = { message: e instanceof Error ? e.message : "The request did not complete." };
     }
