@@ -322,6 +322,7 @@ export function recommend(
   avoidCuisines: string[] = [],
   exclude: string[] = [],
   signals: Map<string, number> | null = null,
+  fatigue: Map<string, number> | null = null,
 ): Recommendation[] {
   const { target, weights, maxEta } = buildProfile(
     answers,
@@ -413,6 +414,12 @@ export function recommend(
           const bounded = Math.max(-LEARNED_CLAMP, Math.min(LEARNED_CLAMP, lift - 1));
           score += bounded * LEARNED;
         }
+      }
+
+      // Seen recently. 0 is fresh, 1 is "you have had a lot of this lately".
+      if (fatigue) {
+        const tired = fatigue.get(dish.id);
+        if (tired) score -= Math.min(1, Math.max(0, tired)) * FATIGUE;
       }
 
       const reasons = AXES.map((a) => ({
@@ -515,6 +522,29 @@ const DIVERSITY = 0.8;
  */
 const LEARNED = 0.15;
 const LEARNED_CLAMP = 0.5;
+
+/**
+ * How hard to push down something this person has just been shown.
+ *
+ * Without this the engine has no memory at all, and a deterministic scorer with
+ * no memory gives the same answer to the same question forever. Somebody whose
+ * honest answers are stable - which is most people, most of the time - gets the
+ * identical dish every single visit and reasonably concludes the thing is
+ * broken. It is not broken, it is amnesiac, and that is worse: it looks like
+ * confidence.
+ *
+ * Deliberately a penalty rather than an exclusion. A dish you love should be
+ * allowed to come back, just not tomorrow. And deliberately NOT randomness: the
+ * result still carries a "picked because" line, and a shuffled answer would
+ * make that sentence a lie. This is a fact about your last fortnight, so the
+ * engine stays as explainable as it was.
+ *
+ * 0.35 is a large number next to LEARNED at 0.15, and that ordering is the
+ * point. What people in general clicked is weak evidence about tonight; what
+ * YOU were shown on Tuesday is strong evidence that you do not want it again on
+ * Wednesday.
+ */
+const FATIGUE = 0.35;
 
 /** 1 when two dishes are identical in the six axes, 0 when maximally apart. */
 function similarity(a: Vector, b: Vector): number {

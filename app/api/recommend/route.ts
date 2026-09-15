@@ -5,6 +5,7 @@ import { fetchWeather } from "@/lib/weather";
 import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
 import { dishSignals } from "@/lib/signals";
+import { dishFatigue } from "@/lib/fatigue";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import {
   SLOTS,
@@ -77,21 +78,28 @@ export async function POST(req: Request) {
     ? body.exclude.filter((d): d is string => typeof d === "string").slice(0, 200)
     : [];
 
+  // One session lookup for two things: whether they may use the Pro activity
+  // feature, and what they have already been shown lately.
+  const supabase = await getSupabaseServer();
+  const { data: auth } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
+
   // Activity is a Pro feature, so entitlement is checked here rather than in
   // the browser. A client-side gate is a suggestion; this is the gate.
   let activity: Activity | null = null;
-  if (isActivity(body.activity)) {
-    const supabase = await getSupabaseServer();
-    const { data: auth } = (await supabase?.auth.getUser()) ?? { data: { user: null } };
-    if (auth?.user) {
-      const { data: profile } = await supabase!
-        .from("profiles")
-        .select("is_pro")
-        .eq("id", auth.user.id)
-        .maybeSingle();
-      if (profile?.is_pro) activity = body.activity;
-    }
+  if (isActivity(body.activity) && auth?.user && supabase) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_pro")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+    if (profile?.is_pro) activity = body.activity;
   }
+
+  // Signed out there is no history to read, so the engine behaves as it always
+  // has: the same answers give the same dish. Worth naming as a known gap
+  // rather than a decision - it is the anonymous device id question again.
+  const fatigue =
+    auth?.user && supabase ? await dishFatigue(supabase, auth.user.id) : null;
   // What the click stream has learned so far. Cached, and empty is a normal
   // answer that leaves the scorer exactly as it was.
   const signals = await dishSignals();
@@ -112,6 +120,7 @@ export async function POST(req: Request) {
       avoidCuisines,
       skip,
       signals,
+      fatigue,
     );
 
   let results = ask(exclude);
