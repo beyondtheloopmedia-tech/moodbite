@@ -33,6 +33,8 @@ export default function ProfileSetup({
   initialCity,
   initialSpice,
   initialAvoid,
+  initialPhone,
+  initialPhoneOk,
   onSave,
   onSkip,
 }: {
@@ -40,12 +42,16 @@ export default function ProfileSetup({
   initialCity: string | null;
   initialSpice: SpiceLevel | null;
   initialAvoid: string[];
+  initialPhone: string | null;
+  initialPhoneOk: boolean;
   onSave: (v: {
     homeCity: string | null;
     diet: Diet | null;
     interests: InterestId[];
     spice: SpiceLevel | null;
     avoidCuisines: string[];
+    phone: string | null;
+    phoneContactOk: boolean;
   }) => void;
   onSkip: () => void;
 }) {
@@ -54,6 +60,8 @@ export default function ProfileSetup({
   const [interests, setInterests] = useState<InterestId[]>(initialInterests);
   const [spice, setSpice] = useState<SpiceLevel | "">(initialSpice ?? "");
   const [avoid, setAvoid] = useState<string[]>(initialAvoid);
+  const [phone, setPhone] = useState(initialPhone ?? "");
+  const [phoneOk, setPhoneOk] = useState(initialPhoneOk);
   const [saving, setSaving] = useState(false);
 
   const toggleAvoid = (c: string) =>
@@ -184,6 +192,34 @@ export default function ProfileSetup({
           </div>
         </fieldset>
 
+        <div className="mt-6">
+          <label htmlFor="setup-phone" className="text-sm text-ink-soft">
+            Phone, if you want order updates there
+          </label>
+          <input
+            id="setup-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+91 98765 43210"
+            className="mt-1 block w-full border-b border-ink/40 bg-transparent pb-1 text-ink placeholder:text-ink-soft/70 focus:border-ink focus:outline-none"
+          />
+          {/* Typing a number is not the same as agreeing to be messaged on it,
+              so the permission is asked for separately and defaults to off. */}
+          <label className="mt-3 flex items-start gap-2 text-sm text-ink-soft">
+            <input
+              type="checkbox"
+              checked={phoneOk}
+              onChange={(e) => setPhoneOk(e.target.checked)}
+              disabled={!phone.trim()}
+              className="mt-0.5"
+            />
+            <span>You can message me here about my orders. We will not sell it on.</span>
+          </label>
+        </div>
+
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <button
             onClick={async () => {
@@ -194,6 +230,8 @@ export default function ProfileSetup({
                 interests,
                 spice: spice || null,
                 avoidCuisines: avoid,
+                phone: phone.trim() || null,
+                phoneContactOk: phoneOk,
               });
               setSaving(false);
             }}

@@ -99,6 +99,8 @@ export default function MoodQuiz() {
     isPro,
     spice,
     avoidCuisines,
+    phone,
+    phoneContactOk,
     saveProfile,
     needsSetup,
   } = useProfile(userId);
@@ -376,6 +378,8 @@ export default function MoodQuiz() {
           initialCity={homeCity ?? city?.slug ?? null}
           initialSpice={spice}
           initialAvoid={avoidCuisines}
+          initialPhone={phone}
+          initialPhoneOk={phoneContactOk}
           onSave={async (v) => {
             await saveProfile(v);
             setSetupSkipped(true);

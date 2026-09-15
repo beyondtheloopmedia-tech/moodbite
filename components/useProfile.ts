@@ -47,6 +47,8 @@ export function useProfile(userId: string | null) {
   const [isPro, setIsPro] = useState(false);
   const [spice, setSpice] = useState<SpiceLevel | null>(null);
   const [avoidCuisines, setAvoidCuisines] = useState<string[]>([]);
+  const [phone, setPhone] = useState<string | null>(null);
+  const [phoneContactOk, setPhoneContactOk] = useState(false);
   const merged = useRef<string | null>(null);
 
   useEffect(() => {
@@ -61,6 +63,8 @@ export function useProfile(userId: string | null) {
       setIsPro(false);
       setSpice(null);
       setAvoidCuisines([]);
+      setPhone(null);
+      setPhoneContactOk(false);
       setReady(true);
       return;
     }
@@ -69,7 +73,9 @@ export function useProfile(userId: string | null) {
     (async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("interests, home_city, diet, is_pro, spice_level, avoid_cuisines")
+        .select(
+          "interests, home_city, diet, is_pro, spice_level, avoid_cuisines, phone, phone_contact_ok",
+        )
         .eq("id", userId)
         .maybeSingle();
 
@@ -89,6 +95,8 @@ export function useProfile(userId: string | null) {
       setIsPro(Boolean(data?.is_pro));
       setSpice((data?.spice_level as SpiceLevel | null) ?? null);
       setAvoidCuisines(data?.avoid_cuisines ?? []);
+      setPhone(data?.phone ?? null);
+      setPhoneContactOk(Boolean(data?.phone_contact_ok));
 
       // First sign-in on this browser: carry what was picked while signed out
       // rather than silently discarding it for an empty profile.
@@ -146,12 +154,16 @@ export function useProfile(userId: string | null) {
       interests: InterestId[];
       spice: SpiceLevel | null;
       avoidCuisines: string[];
+      phone: string | null;
+      phoneContactOk: boolean;
     }) => {
       setHomeCity(next.homeCity);
       setDiet(next.diet);
       setInterests(next.interests);
       setSpice(next.spice);
       setAvoidCuisines(next.avoidCuisines);
+      setPhone(next.phone);
+      setPhoneContactOk(next.phoneContactOk);
       writeLocal(next.interests);
 
       const supabase = getSupabaseBrowser();
@@ -164,6 +176,9 @@ export function useProfile(userId: string | null) {
         interests: next.interests,
         spice_level: next.spice,
         avoid_cuisines: next.avoidCuisines,
+        phone: next.phone,
+        // possession and permission are different facts; never infer one
+        phone_contact_ok: next.phone ? next.phoneContactOk : false,
       });
       if (error) console.warn("moodbite: could not save profile", error.message);
       return !error;
@@ -184,6 +199,8 @@ export function useProfile(userId: string | null) {
     isPro,
     spice,
     avoidCuisines,
+    phone,
+    phoneContactOk,
     saveProfile,
     ready,
     needsSetup,

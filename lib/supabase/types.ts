@@ -21,6 +21,8 @@ export interface Database {
           is_admin: boolean;
           is_pro: boolean;
           spice_level: string | null;
+          phone: string | null;
+          phone_contact_ok: boolean;
           avoid_cuisines: string[];
           created_at: string;
           updated_at: string;
@@ -32,6 +34,8 @@ export interface Database {
           home_city?: string | null;
           spice_level?: string | null;
           avoid_cuisines?: string[];
+          phone?: string | null;
+          phone_contact_ok?: boolean;
         };
         Update: {
           interests?: InterestId[];
@@ -39,6 +43,8 @@ export interface Database {
           home_city?: string | null;
           spice_level?: string | null;
           avoid_cuisines?: string[];
+          phone?: string | null;
+          phone_contact_ok?: boolean;
         };
         Relationships: [];
       };

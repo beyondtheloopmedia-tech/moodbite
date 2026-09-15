@@ -94,8 +94,9 @@ export default async function AdminPage() {
   const [{ data: profiles }, { data: events }] = await Promise.all([
     supabase
       .from("profiles")
-      // No email selected. The panel cannot leak what it never asks for.
-      .select("interests, home_city, diet, spice_level, is_pro, created_at")
+      .select(
+        "id, email, phone, phone_contact_ok, interests, home_city, diet, spice_level, is_pro, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(200),
     supabase
@@ -119,6 +120,10 @@ export default async function AdminPage() {
   const withCity = rows.filter((p) => p.home_city).length;
   const withDiet = rows.filter((p) => p.diet).length;
   const withSpice = rows.filter((p) => p.spice_level).length;
+  const withPhone = rows.filter((p) => p.phone).length;
+  // Consent is counted separately from possession, because only one of them
+  // makes a number usable.
+  const withPhoneOk = rows.filter((p) => p.phone && p.phone_contact_ok).length;
   const withInterests = rows.filter((p) => (p.interests?.length ?? 0) > 0).length;
 
   const interestTally = new Map<string, number>();
@@ -181,8 +186,8 @@ export default async function AdminPage() {
       <section className="mt-12">
         <h2 className="font-display text-xl">Sign-ups</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Counts only. Individual accounts are not listed, and the query does not
-          ask for email addresses, so this page cannot show who anyone is.
+          {rows.length} account{rows.length === 1 ? "" : "s"}. This page shows real
+          people: treat it the way you would any list of your users&apos; addresses.
         </p>
 
         <div className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-2">
@@ -202,6 +207,8 @@ export default async function AdminPage() {
               <Stat label="Set a home city" value={withCity} of={rows.length} />
               <Stat label="Set a diet" value={withDiet} of={rows.length} />
               <Stat label="Set a spice level" value={withSpice} of={rows.length} />
+              <Stat label="Gave a phone number" value={withPhone} of={rows.length} />
+              <Stat label="Agreed to be contacted" value={withPhoneOk} of={rows.length} />
               <Stat label="Picked any preference" value={withInterests} of={rows.length} />
             </ul>
           </div>
@@ -227,6 +234,63 @@ export default async function AdminPage() {
               </ul>
             </div>
           )}
+        </div>
+
+        <div className="mt-10 overflow-x-auto">
+          <h3 className="text-sm text-ink-soft">Accounts</h3>
+          <table className="mt-2 w-full min-w-[44rem] text-sm">
+            <thead>
+              <tr className="border-b border-ink/20 text-left text-ink-soft">
+                <th className="py-2 font-normal">Email</th>
+                <th className="py-2 font-normal">Phone</th>
+                <th className="py-2 font-normal">Joined</th>
+                <th className="py-2 font-normal">City</th>
+                <th className="py-2 font-normal">Heat</th>
+                <th className="py-2 font-normal">Preferences</th>
+                <th className="py-2 font-normal">Pro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.id} className="border-b border-ink/10">
+                  <td className="py-2.5 pr-4">{p.email ?? <span className="text-ink-soft">—</span>}</td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.phone ? (
+                      <>
+                        {p.phone}
+                        {/* A number on file is not permission to use it. */}
+                        {!p.phone_contact_ok && (
+                          <span className="ml-1 text-ink-soft/70">(no consent)</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
+                    {new Date(p.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.home_city ? (CITY_NAME.get(p.home_city) ?? p.home_city) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-ink-soft">{p.spice_level ?? "—"}</td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.interests?.length
+                      ? p.interests.map((i) => INTEREST_LABEL.get(i) ?? i).join(", ")
+                      : "none set"}
+                  </td>
+                  <td className="py-2.5 text-ink-soft">{p.is_pro ? "yes" : "—"}</td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-4 text-ink-soft">
+                    No accounts yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
