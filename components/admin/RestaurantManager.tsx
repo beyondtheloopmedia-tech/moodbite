@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import type { Database } from "@/lib/supabase/types";
 import { CITIES } from "@/lib/cities";
 import { slugify } from "@/lib/posts";
 
@@ -56,6 +57,35 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
   const [locating, setLocating] = useState(false);
 
   const locked = Boolean(draft?.id);
+
+  /**
+   * The one place a listing is written.
+   *
+   * Shared with the access probe deliberately. The probe used to do a bare
+   * insert while the form did `.insert(...).select().single()`, and those are
+   * not the same request - the second has to read the row back through the
+   * SELECT policies and can fail where the first succeeds. A probe that tests
+   * something easier than the real thing reports good news it has not earned,
+   * which is exactly what happened.
+   *
+   * try/catch because a thrown error - a dropped connection, anything raised
+   * inside the client rather than returned - would otherwise skip every line
+   * after the await and leave the button disabled with nothing said.
+   */
+  async function writeListing(fields: Database["public"]["Tables"]["restaurants"]["Insert"], id: string) {
+    let data: unknown = null;
+    let error: { message: string; code?: string; details?: string } | null = null;
+    try {
+      const res = id
+        ? await supabase!.from("restaurants").update(fields).eq("id", id).select().single()
+        : await supabase!.from("restaurants").insert(fields).select().single();
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = { message: e instanceof Error ? e.message : "The request did not complete." };
+    }
+    return { data, error };
+  }
 
   /**
    * Fill the coordinates from where this device is right now.
@@ -124,23 +154,8 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
       listed: draft.listed,
     };
 
-    // try/finally, because without it a thrown error - a dropped connection,
-    // anything the client raises rather than returns - skips every line below
-    // and leaves the button disabled reading "Saving" with nothing said. A
-    // save that fails silently is worse than one that fails loudly.
-    let data: unknown = null;
-    let error: { message: string; code?: string; details?: string } | null = null;
-    try {
-      const res = draft.id
-        ? await supabase.from("restaurants").update(fields).eq("id", draft.id).select().single()
-        : await supabase.from("restaurants").insert(fields).select().single();
-      data = res.data;
-      error = res.error;
-    } catch (e) {
-      error = { message: e instanceof Error ? e.message : "The request did not complete." };
-    } finally {
-      setSaving(false);
-    }
+    const { data, error } = await writeListing(fields, draft.id);
+    setSaving(false);
 
     if (error) {
       console.error("moodbite: saving a listing failed", error);
@@ -186,9 +201,23 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
     const probe = `zz-access-probe-${Date.now()}`;
     let wrote = "";
     try {
-      const { error } = await supabase
-        .from("restaurants")
-        .insert({ slug: probe, name: "Access probe", city: "hyderabad", listed: false });
+      // The same shape the form builds, through the same function, so this
+      // cannot pass while a real save fails.
+      const { error } = await writeListing(
+        {
+          slug: probe,
+          name: "Access probe",
+          area: null,
+          city: "hyderabad",
+          lat: 17.385,
+          lon: 78.4867,
+          cuisines: [],
+          price_band: null,
+          veg_only: false,
+          listed: false,
+        },
+        "",
+      );
       if (error) {
         console.error("moodbite: access probe write failed", error);
         wrote = `write REFUSED — ${error.message}${error.code ? ` (${error.code})` : ""}`;
