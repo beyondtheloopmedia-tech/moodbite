@@ -94,7 +94,24 @@ on the same six axes as everything else. A profile is not a second system bolted
 it is a nudge to the target vector the six answers already produce.
 
 Precedence, weakest last to win: **the six answers**, then the weather, then your
-standing preferences, then the heat slider. The slider is an explicit request made
+standing preferences, then the heat slider.
+
+Two rules govern how preferences fold in, both learned from watching the naive
+version get them wrong:
+
+- **Contradictions cancel, including their weight.** Picking *keep it light* and
+  *go big* together nets out to almost no preference on lightness, so the engine
+  must not then weigh lightness *harder* than with no preference at all. The
+  weight bump follows the surviving pull, not the sum of the shouting: one
+  preference moves lightness weight 1.00 → 1.50, the contradictory pair moves it
+  1.00 → 1.07, because only 19% of the pull survives.
+- **Stacking has diminishing returns.** Six preferences describe taste in
+  general, not tonight, and must never out-vote the six answers. Dividing by
+  `sqrt(n)` keeps one preference meaningful while stopping six from dominating:
+  with a *stressed* mood, all six selected returns the same three dishes merely
+  reordered.
+
+Axis weights are also capped, so no single axis can decide the answer alone. The slider is an explicit request made
 just now, so it beats everything; preferences you set once should never outrank how
 you say you feel tonight.
 

@@ -50,6 +50,57 @@ export function weatherBias(w?: Weather | null): { kind: BiasKind; note: string 
   return kind === "none" ? none : { kind, note: BIAS_NOTE[kind] };
 }
 
+/**
+ * Fold standing preferences into a profile.
+ *
+ * Two rules, both learned from watching it get them wrong:
+ *
+ * Contradictions cancel, including their weight. Picking "keep it light" and
+ * "go big" together nets out to roughly no preference on lightness, so the
+ * engine must not then weigh lightness harder than it would have with no
+ * preference at all. Weight follows the surviving pull, not the sum of the
+ * shouting.
+ *
+ * Stacking has diminishing returns. Six preferences are a description of taste
+ * in general, not a claim about tonight, and they should never out-vote the six
+ * answers. Dividing by sqrt(n) keeps one strong preference meaningful while
+ * stopping six from dominating.
+ */
+function applyInterests(target: Vector, weights: Vector, interests: InterestId[]) {
+  if (interests.length === 0) return;
+
+  const net = {} as Record<keyof Vector, number>;
+  const gross = {} as Record<keyof Vector, number>;
+  const weightPull = {} as Record<keyof Vector, number>;
+  for (const axis of AXES) {
+    net[axis] = 0;
+    gross[axis] = 0;
+    weightPull[axis] = 0;
+  }
+
+  for (const id of interests) {
+    const interest = INTERESTS.find((i) => i.id === id);
+    if (!interest) continue;
+    for (const [axis, delta] of Object.entries(interest.target)) {
+      net[axis as keyof Vector] += delta as number;
+      gross[axis as keyof Vector] += Math.abs(delta as number);
+    }
+    for (const [axis, delta] of Object.entries(interest.weights)) {
+      weightPull[axis as keyof Vector] += delta as number;
+    }
+  }
+
+  const damp = 1 / Math.sqrt(interests.length);
+
+  for (const axis of AXES) {
+    if (gross[axis] === 0) continue;
+    // 1 when every preference pulls the same way, 0 when they fully cancel
+    const conviction = Math.abs(net[axis]) / gross[axis];
+    target[axis] += net[axis] * damp;
+    weights[axis] += weightPull[axis] * conviction * damp;
+  }
+}
+
 interface Profile {
   target: Vector;
   weights: Vector;
@@ -159,16 +210,7 @@ export function buildProfile(
       break;
   }
 
-  for (const id of interests) {
-    const interest = INTERESTS.find((i) => i.id === id);
-    if (!interest) continue;
-    for (const [axis, delta] of Object.entries(interest.target)) {
-      target[axis as keyof Vector] += delta as number;
-    }
-    for (const [axis, delta] of Object.entries(interest.weights)) {
-      weights[axis as keyof Vector] += delta as number;
-    }
-  }
+  applyInterests(target, weights, interests);
 
   if (heatOverride !== undefined) {
     target.heat = heatOverride;
@@ -177,7 +219,8 @@ export function buildProfile(
 
   for (const axis of AXES) {
     target[axis] = clamp(target[axis]);
-    weights[axis] = Math.max(0.2, weights[axis]);
+    // floor keeps every axis in play; ceiling stops one axis deciding alone
+    weights[axis] = Math.min(2.2, Math.max(0.2, weights[axis]));
   }
 
   const maxEta = answers.patience === "fast" ? 30 : answers.patience === "normal" ? 45 : 999;
