@@ -97,6 +97,26 @@ export function shrinkRating(rating: number | null, reviews: number): number {
  * distance in disguise: somebody who will not wait half an hour for delivery
  * will not drive across town either.
  */
+/**
+ * How much Google's own ordering counts.
+ *
+ * The other three weights answer "is this place any good, near, affordable".
+ * None of them answers "does it actually serve the dish", and that is the one
+ * question a text search is already good at. Discarding its order entirely is
+ * what let a burger place win a search for hummus: Google had it eighth and
+ * put a dedicated hummus restaurant first, and our score overturned that on a
+ * margin of 0.010 because 4.9 from 613 reviews shrinks higher than 4.6 from
+ * 938.
+ *
+ * Deliberately not larger. At roughly 15% of the total it can settle a close
+ * call and cannot overturn a clear one - relevance strong enough to dominate
+ * would just reproduce Google's list and throw away the mood ranking, which is
+ * the entire point of doing this ourselves. It does not vary by patience:
+ * whether a place serves the dish has nothing to do with how long you will
+ * wait for it.
+ */
+const RELEVANCE_WEIGHT = 0.18;
+
 const WEIGHTS: Record<Answers["patience"], { quality: number; near: number; price: number }> = {
   fast: { quality: 0.35, near: 0.5, price: 0.15 },
   normal: { quality: 0.5, near: 0.33, price: 0.17 },
@@ -160,17 +180,22 @@ export function rankPlaces(
   const want = desiredPrice(answers, interests);
   const priceWeight = interests.includes("thrifty") ? w.price * 1.8 : w.price;
 
+  // Google's position is captured before filtering, so dropping a closed
+  // restaurant does not promote everything below it up the relevance scale.
+  const span = Math.max(1, raw.length - 1);
+
   return raw
+    .map((p, rank) => ({ p, rank }))
     .filter(
-      (p): p is RawPlace & { id: string; location: { latitude: number; longitude: number } } =>
-        typeof p.id === "string" &&
-        typeof p.location?.latitude === "number" &&
-        typeof p.location?.longitude === "number" &&
+      (e): e is { p: RawPlace & { id: string; location: { latitude: number; longitude: number } }; rank: number } =>
+        typeof e.p.id === "string" &&
+        typeof e.p.location?.latitude === "number" &&
+        typeof e.p.location?.longitude === "number" &&
         // Permanently closed places still come back in results. A shut
         // restaurant is never the answer to "where can I get this".
-        p.businessStatus === "OPERATIONAL",
+        e.p.businessStatus === "OPERATIONAL",
     )
-    .map((p) => {
+    .map(({ p, rank }) => {
       const lat = p.location.latitude;
       const lon = p.location.longitude;
       const km = haversineKm(center.lat, center.lon, lat, lon);
@@ -188,7 +213,14 @@ export function rankPlaces(
       // being punished into last place.
       const priceFit = priceLevel === null ? 0.55 : clamp01(1 - Math.abs(priceLevel - want) * 0.3);
 
-      let score = quality * w.quality + near * w.near + priceFit * priceWeight;
+      // 1 for whatever Google put first, 0 for whatever it put last.
+      const relevance = 1 - rank / span;
+
+      let score =
+        quality * w.quality +
+        near * w.near +
+        priceFit * priceWeight +
+        relevance * RELEVANCE_WEIGHT;
       // Open beats shut by enough to matter but not enough to put a bad place
       // above a good one. Unknown hours sit in between, uncounted either way.
       if (openNow === true) score += 0.12;
