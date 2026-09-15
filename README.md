@@ -122,6 +122,19 @@ that renders has to know.
 
 ### Accounts
 
+One invitation, not a wall. A sign-in dialog appears **after** the first
+recommendation, never before: asking for an account before someone has seen
+what the thing does is how you lose them. It is dismissible by Escape, by the
+backdrop or by "Not now", and the dismissal is remembered, so it appears once
+and never again.
+
+Straight after a first sign-in there is a profile step: default city, diet and
+standing preferences. It fills `home_city` and `diet`, which existed in the
+schema from the beginning and which nothing ever wrote - every account showed
+no city because of it. Every field is skippable; the six questions remain the
+product.
+
+
 Optional, and only ever changes *where* preferences are kept. There is no signup
 wall: signed out, the app is exactly what it was.
 

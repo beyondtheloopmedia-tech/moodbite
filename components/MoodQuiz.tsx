@@ -8,6 +8,8 @@ import { useCity } from "./useCity";
 import { useAmbience } from "./useAmbience";
 import InterestPicker from "./InterestPicker";
 import { useProfile } from "./useProfile";
+import SignInModal, { markSignInPromptSeen, signInPromptSeen } from "./SignInModal";
+import ProfileSetup from "./ProfileSetup";
 import AccountBar from "./AccountBar";
 import { useSession } from "./useSession";
 import { useEventLog } from "./useEventLog";
@@ -89,7 +91,10 @@ export default function MoodQuiz() {
   const { city, status, km, locate, choose: chooseCity, cities, radiusKm } = useCity();
   const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
-  const { interests, toggle: toggleInterest } = useProfile(userId);
+  const { interests, toggle: toggleInterest, homeCity, saveProfile, needsSetup } =
+    useProfile(userId);
+  const [promptDismissed, setPromptDismissed] = useState(false);
+  const [setupSkipped, setSetupSkipped] = useState(false);
   // A fast is a fact about today, not a standing preference, so it is session
   // state and is never persisted.
   const [fasting, setFasting] = useState(false);
@@ -327,8 +332,35 @@ export default function MoodQuiz() {
   );
   }
 
+  // Signed out, a result on screen, and not asked before: one invitation.
+  const showSignIn =
+    authState === "signedOut" && Boolean(results) && !promptDismissed && !signInPromptSeen();
+
   return (
     <div className="w-full">
+      <SignInModal
+        open={showSignIn}
+        onDismiss={() => {
+          markSignInPromptSeen();
+          setPromptDismissed(true);
+        }}
+        onSignIn={(address) => {
+          markSignInPromptSeen();
+          setPromptDismissed(true);
+          sendLink(address);
+        }}
+      />
+      {needsSetup && !setupSkipped && (
+        <ProfileSetup
+          initialInterests={interests}
+          initialCity={homeCity ?? city?.slug ?? null}
+          onSave={async (v) => {
+            await saveProfile(v);
+            setSetupSkipped(true);
+          }}
+          onSkip={() => setSetupSkipped(true)}
+        />
+      )}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <AmbienceBar now={now} greeting={greeting} weather={weather} weatherLine={weatherLine} />
         <AccountBar

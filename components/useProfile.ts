@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { parseInterests, type InterestId } from "@/lib/interests";
+import type { Diet } from "@/lib/types";
 
 const STORAGE_KEY = "moodbite.interests";
 
@@ -32,10 +33,17 @@ const writeLocal = (v: InterestId[]) => {
  * all. Signed in, it is the `profiles` row, so preferences follow you between
  * devices. localStorage is still written either way, so signing out does not
  * feel like losing your settings.
+ *
+ * `home_city` and `diet` existed in the schema from the start and nothing ever
+ * wrote them, which is why every account showed no city. The profile step is
+ * what fills them.
  */
 export function useProfile(userId: string | null) {
   const [interests, setInterests] = useState<InterestId[]>([]);
+  const [homeCity, setHomeCity] = useState<string | null>(null);
+  const [diet, setDiet] = useState<Diet | null>(null);
   const [ready, setReady] = useState(false);
+  const [hasProfileRow, setHasProfileRow] = useState(false);
   const merged = useRef<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +52,9 @@ export function useProfile(userId: string | null) {
 
     if (!userId || !supabase) {
       setInterests(local);
+      setHomeCity(null);
+      setDiet(null);
+      setHasProfileRow(false);
       setReady(true);
       return;
     }
@@ -52,7 +63,7 @@ export function useProfile(userId: string | null) {
     (async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("interests")
+        .select("interests, home_city, diet")
         .eq("id", userId)
         .maybeSingle();
 
@@ -66,6 +77,9 @@ export function useProfile(userId: string | null) {
       }
 
       const remote = parseInterests(data?.interests);
+      setHomeCity(data?.home_city ?? null);
+      setDiet((data?.diet as Diet | null) ?? null);
+      setHasProfileRow(Boolean(data));
 
       // First sign-in on this browser: carry what was picked while signed out
       // rather than silently discarding it for an empty profile.
@@ -115,5 +129,33 @@ export function useProfile(userId: string | null) {
     [interests, userId],
   );
 
-  return { interests, toggle, ready };
+  /** Writes the whole profile at once, from the setup step. */
+  const saveProfile = useCallback(
+    async (next: { homeCity: string | null; diet: Diet | null; interests: InterestId[] }) => {
+      setHomeCity(next.homeCity);
+      setDiet(next.diet);
+      setInterests(next.interests);
+      writeLocal(next.interests);
+
+      const supabase = getSupabaseBrowser();
+      if (!userId || !supabase) return true;
+
+      const { error } = await supabase.from("profiles").upsert({
+        id: userId,
+        home_city: next.homeCity,
+        diet: next.diet,
+        interests: next.interests,
+      });
+      if (error) console.warn("moodbite: could not save profile", error.message);
+      return !error;
+    },
+    [userId],
+  );
+
+  // Signed in, loaded, and the two fields the setup step exists to fill are
+  // both still empty. Interests are deliberately not part of this test: they
+  // can be set without an account, so having some is no evidence of setup.
+  const needsSetup = Boolean(userId) && ready && hasProfileRow && !homeCity && !diet;
+
+  return { interests, toggle, homeCity, diet, saveProfile, ready, needsSetup };
 }
