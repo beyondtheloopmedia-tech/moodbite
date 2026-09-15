@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import type { Answers, Slot } from "@/lib/types";
+import { deviceId, remember } from "@/lib/device";
 
 /**
  * The click stream: what was put in front of someone, and what they went with.
@@ -10,9 +11,17 @@ import type { Answers, Slot } from "@/lib/types";
  * The ratio between those two is the only honest signal for tuning the dish
  * vectors, which are hand-tagged guesses until real choices disagree with them.
  *
- * Signed out there is nowhere to write and nothing is recorded. That is on
- * purpose: rows are owned by a user, and inventing an anonymous identity to log
- * against would be collecting more than the feature needs.
+ * Signed out, rows are written against an opaque device id instead of a user.
+ * That used to be refused on the grounds that inventing an identity collects
+ * more than the feature needs - but the id has nothing behind it, and the cost
+ * of the old position was concrete: the engine learned only from the small
+ * minority with accounts, which is both thin and biased toward the already
+ * committed.
+ *
+ * Every impression is also written to the device's own memory, which is what
+ * lets a signed-out reader stop being shown the same dish every visit. That
+ * copy never reaches the server as anything but the request that needs it; see
+ * lib/device.ts.
  */
 /**
  * What was true when the recommendation was made. Without this the log can say
@@ -54,9 +63,18 @@ export function useEventLog(userId: string | null) {
     current.current = null;
   }, [userId]);
 
+  // `userId` is null for a signed-out reader, which is a valid author now
+  // rather than a reason to record nothing.
+
   const logShown = useCallback(
     (dishIds: string[], city: string | null, slot: Slot, ctx: EventContext) => {
-      if (!userId || !supabase || dishIds.length === 0) return;
+      if (dishIds.length === 0) return;
+      const device = userId ? null : deviceId();
+      // Remembered locally whether or not there is anywhere to write to: the
+      // device's memory is what keeps the suggestions moving, and it must not
+      // depend on the database being reachable.
+      if (!userId) remember(dishIds.map((d) => ({ d, t: Date.now() })));
+      if (!supabase || (!userId && !device)) return;
       const fingerprint = `${slot}|${city ?? ""}|${ctx.mood ?? ""}|${dishIds.join(",")}`;
       // Same shortlist as last time: keep the existing id so a later click
       // still lands on the decision the impressions were written under.
@@ -75,6 +93,7 @@ export function useEventLog(userId: string | null) {
         .insert(
           dishIds.map((dish_id, i) => ({
             user_id: userId,
+            device_id: device,
             dish_id,
             city,
             slot,
@@ -93,13 +112,16 @@ export function useEventLog(userId: string | null) {
 
   const logClicked = useCallback(
     (dishId: string, city: string | null, slot: Slot, ctx: EventContext) => {
-      if (!userId || !supabase) return;
+      const device = userId ? null : deviceId();
+      if (!userId) remember([{ d: dishId, t: Date.now(), c: 1 }]);
+      if (!supabase || (!userId && !device)) return;
       // Not awaited, so it never delays opening the delivery app, but the
       // builder still has to be executed to send anything at all.
       supabase
         .from("recommendation_events")
         .insert({
           user_id: userId,
+          device_id: device,
           dish_id: dishId,
           city,
           slot,

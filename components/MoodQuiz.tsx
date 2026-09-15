@@ -16,6 +16,7 @@ import NearbyPlaces from "./NearbyPlaces";
 import { useSession } from "./useSession";
 import { useEventLog } from "./useEventLog";
 import { slotForHour } from "@/lib/scoring";
+import { readHistory } from "@/lib/device";
 import type { Activity, Answers, Slot } from "@/lib/types";
 
 type Key = keyof Answers;
@@ -171,6 +172,9 @@ export default function MoodQuiz() {
           spice,
           avoidCuisines,
           exclude: skip,
+          // Only for a signed-out reader: signed in, the server has a better
+          // copy of this and ignores whatever is sent.
+          seen: userId ? undefined : readHistory(),
         }),
         });
         const data = await res.json();
@@ -192,7 +196,7 @@ export default function MoodQuiz() {
         setBusy(false);
       }
     },
-    [slot, city, interests, fasting, activity, spice, avoidCuisines],
+    [slot, city, interests, fasting, activity, spice, avoidCuisines, userId],
   );
 
   useEffect(() => {

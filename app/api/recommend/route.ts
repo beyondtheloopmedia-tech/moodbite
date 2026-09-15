@@ -5,7 +5,7 @@ import { fetchWeather } from "@/lib/weather";
 import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
 import { dishSignals } from "@/lib/signals";
-import { dishFatigue } from "@/lib/fatigue";
+import { dishFatigue, fatigueFrom } from "@/lib/fatigue";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import {
   SLOTS,
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     spice?: unknown;
     avoidCuisines?: unknown;
     exclude?: unknown;
+    seen?: unknown;
   };
   try {
     body = await req.json();
@@ -95,11 +96,25 @@ export async function POST(req: Request) {
     if (profile?.is_pro) activity = body.activity;
   }
 
-  // Signed out there is no history to read, so the engine behaves as it always
-  // has: the same answers give the same dish. Worth naming as a known gap
-  // rather than a decision - it is the anonymous device id question again.
-  const fatigue =
-    auth?.user && supabase ? await dishFatigue(supabase, auth.user.id) : null;
+  // Signed in, the history is on the server. Signed out, the browser keeps its
+  // own and sends it - see lib/device.ts for why it is never stored here.
+  // Untrusted either way, and harmless: inflating it only buries dishes for
+  // yourself, and emptying it only means seeing repeats.
+  let fatigue: Map<string, number> | null = null;
+  if (auth?.user && supabase) {
+    fatigue = await dishFatigue(supabase, auth.user.id);
+  } else if (Array.isArray(body.seen)) {
+    const sightings = body.seen
+      .filter(
+        (x): x is { d: string; t: number; c?: 1 } =>
+          typeof x === "object" && x !== null &&
+          typeof (x as { d?: unknown }).d === "string" &&
+          typeof (x as { t?: unknown }).t === "number",
+      )
+      .slice(0, 400)
+      .map((x) => ({ dish: x.d, at: x.t, clicked: x.c === 1 }));
+    if (sightings.length) fatigue = fatigueFrom(sightings);
+  }
   // What the click stream has learned so far. Cached, and empty is a normal
   // answer that leaves the scorer exactly as it was.
   const signals = await dishSignals();

@@ -51,7 +51,8 @@ export interface Database {
       recommendation_events: {
         Row: {
           id: number;
-          user_id: string;
+          user_id: string | null;
+          device_id: string | null;
           dish_id: string;
           city: string | null;
           slot: string | null;
@@ -74,7 +75,8 @@ export interface Database {
           created_at: string;
         };
         Insert: {
-          user_id: string;
+          user_id?: string | null;
+          device_id?: string | null;
           dish_id: string;
           city?: string | null;
           slot?: string | null;

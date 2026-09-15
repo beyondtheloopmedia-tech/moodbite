@@ -11,7 +11,12 @@ import type { Database } from "./supabase/types";
  * filter below were wrong.
  */
 
-/** Nothing older than this counts. Two weeks is long enough to miss a dish. */
+/**
+ * Nothing older than this counts. Two weeks is long enough to miss a dish.
+ *
+ * Decay to zero is linear across the window, so a dish fades out of the way
+ * rather than reappearing abruptly on the fifteenth day.
+ */
 const WINDOW_DAYS = 14;
 
 /**
@@ -45,6 +50,35 @@ const SATURATION = 2;
  */
 const CLICK_MULTIPLIER = 2;
 
+/**
+ * The same curve, applied to a history the browser kept itself.
+ *
+ * Signed out there is nothing on the server to read, so the reader's own device
+ * sends what it has seen. Shared with the signed-in path deliberately: two
+ * implementations of "how tired am I of this" would drift, and the whole point
+ * is that the two kinds of reader get the same engine.
+ *
+ * The input is untrusted and it does not matter. Inflating it only buries
+ * dishes for yourself; emptying it only means seeing repeats. There is nothing
+ * to gain by lying and nobody else to affect.
+ */
+export function fatigueFrom(
+  sightings: { dish: string; at: number; clicked?: boolean }[],
+  now = Date.now(),
+): Map<string, number> {
+  const weight = new Map<string, number>();
+  for (const s of sightings) {
+    const days = (now - s.at) / 864e5;
+    if (days < 0 || days > WINDOW_DAYS) continue;
+    const recency = Math.max(0, 1 - days / WINDOW_DAYS);
+    const w = recency * (s.clicked ? CLICK_MULTIPLIER : 1);
+    weight.set(s.dish, (weight.get(s.dish) ?? 0) + w);
+  }
+  const out = new Map<string, number>();
+  for (const [dish, w] of weight) out.set(dish, Math.min(1, w / SATURATION));
+  return out;
+}
+
 export async function dishFatigue(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -66,19 +100,11 @@ export async function dishFatigue(
     return new Map();
   }
 
-  const now = Date.now();
-  const weight = new Map<string, number>();
-
-  for (const e of data ?? []) {
-    const days = (now - new Date(e.created_at).getTime()) / 864e5;
-    // Linear decay to zero at the window edge, so a dish fades out of the way
-    // rather than reappearing abruptly on the fifteenth day.
-    const recency = Math.max(0, 1 - days / WINDOW_DAYS);
-    const w = recency * (e.action === "clicked" ? CLICK_MULTIPLIER : 1);
-    weight.set(e.dish_id, (weight.get(e.dish_id) ?? 0) + w);
-  }
-
-  const out = new Map<string, number>();
-  for (const [dish, w] of weight) out.set(dish, Math.min(1, w / SATURATION));
-  return out;
+  return fatigueFrom(
+    (data ?? []).map((e) => ({
+      dish: e.dish_id,
+      at: new Date(e.created_at).getTime(),
+      clicked: e.action === "clicked",
+    })),
+  );
 }
