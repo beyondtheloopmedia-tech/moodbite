@@ -255,6 +255,12 @@ was shown in, so "what do people order when stressed" was unanswerable. `0002`
 adds `mood`, `energy` and `fasting` to the log. Rows written before it have
 null moods and are grouped separately rather than silently folded in.
 
+Each shortlist carries an id and each dish its rank, so the log can say *which
+position was taken* - the most direct measure of ranking quality there is. If
+the headline pick is not the one people choose, the ranking is wrong, and
+nothing else on the page would say so. Grouping by shortlist also makes a
+zero-click shortlist visible: four suggestions, none of them wanted.
+
 The panel shows clicks against impressions, not clicks alone. A dish with many
 impressions and no clicks is the engine being confidently wrong, which is the
 thing worth seeing.

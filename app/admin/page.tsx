@@ -98,7 +98,7 @@ export default async function AdminPage() {
     supabase
       .from("recommendation_events")
       .select(
-        "dish_id, action, mood, energy, hunger, palate, patience, diet, slot, day_part, city, weather, temp_c, interests, heat_override, created_at",
+        "dish_id, action, mood, energy, hunger, palate, patience, diet, slot, day_part, city, weather, temp_c, interests, heat_override, rank, shortlist_id, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(5000),
@@ -120,6 +120,28 @@ export default async function AdminPage() {
       const ib = first.indexOf(b);
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     });
+
+  // Which position actually gets taken. If the headline pick is not the one
+  // people choose, the ranking is wrong, and nothing else in this page says so.
+  const byRank = new Map<number, Tally>();
+  for (const e of log as { rank: number | null; action: string }[]) {
+    if (e.rank === null) continue;
+    const cur = byRank.get(e.rank) ?? { shown: 0, clicked: 0 };
+    if (e.action === "clicked") cur.clicked += 1;
+    else cur.shown += 1;
+    byRank.set(e.rank, cur);
+  }
+  const ranks = [...byRank.entries()].sort((a, b) => a[0] - b[0]);
+
+  // A shortlist where nothing was clicked is the engine offering four things
+  // and none of them appealing - invisible until impressions were grouped.
+  const shortlists = new Map<string, boolean>();
+  for (const e of log as { shortlist_id: string | null; action: string }[]) {
+    if (!e.shortlist_id) continue;
+    shortlists.set(e.shortlist_id, shortlists.get(e.shortlist_id) || e.action === "clicked");
+  }
+  const totalShortlists = shortlists.size;
+  const convertedShortlists = [...shortlists.values()].filter(Boolean).length;
 
   // The slider is the reader overruling the engine, so it is worth its own count.
   const overrides = log.filter(
@@ -193,6 +215,30 @@ export default async function AdminPage() {
           <p className="mt-4 text-sm text-ink-soft">
             Nothing logged yet. Events are only recorded for signed-in users.
           </p>
+        )}
+
+        {ranks.length > 0 && (
+          <div className="mt-8">
+            <h3 className="font-display text-lg">Which position gets chosen</h3>
+            <p className="mt-1 text-sm text-ink-soft">
+              {convertedShortlists} of {totalShortlists} shortlist
+              {totalShortlists === 1 ? "" : "s"} led to a click. If rank 1 is not
+              where the clicks are, the ranking is wrong.
+            </p>
+            <ul className="mt-2 max-w-sm">
+              {ranks.map(([rank, c]) => (
+                <li
+                  key={rank}
+                  className="flex items-baseline justify-between gap-3 border-b border-ink/10 py-1.5 text-sm"
+                >
+                  <span>{rank === 1 ? "1 — the headline pick" : `${rank} — alternate`}</span>
+                  <span className="shrink-0 tabular-nums text-ink-soft">
+                    {c.clicked}/{c.shown}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <Breakdown title="By mood" groups={byMood} keys={ordered(byMood, ["stressed", "flat", "fine", "celebrating"])} />

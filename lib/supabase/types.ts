@@ -55,6 +55,8 @@ export interface Database {
           day_part: string | null;
           interests: string[] | null;
           heat_override: number | null;
+          rank: number | null;
+          shortlist_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -75,6 +77,8 @@ export interface Database {
           day_part?: string | null;
           interests?: string[] | null;
           heat_override?: number | null;
+          rank?: number | null;
+          shortlist_id?: string | null;
         };
         Update: never;
         Relationships: [];

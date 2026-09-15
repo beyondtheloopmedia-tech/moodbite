@@ -42,28 +42,44 @@ export function useEventLog(userId: string | null) {
   // so each distinct shortlist is recorded once.
   const loggedShortlists = useRef<Set<string>>(new Set());
 
+  // The shortlist currently on screen: its id, and where each dish sat in it.
+  // A click has to be attributable to the same decision that produced the
+  // impressions, and to the position the reader actually reached past.
+  const current = useRef<{ id: string; ranks: Map<string, number> } | null>(null);
+
   useEffect(() => {
     // a new session is a new set of impressions
     loggedShortlists.current.clear();
+    current.current = null;
   }, [userId]);
 
   const logShown = useCallback(
     (dishIds: string[], city: string | null, slot: Slot, ctx: EventContext) => {
       if (!userId || !supabase || dishIds.length === 0) return;
       const fingerprint = `${slot}|${city ?? ""}|${ctx.mood ?? ""}|${dishIds.join(",")}`;
+      // Same shortlist as last time: keep the existing id so a later click
+      // still lands on the decision the impressions were written under.
       if (loggedShortlists.current.has(fingerprint)) return;
       loggedShortlists.current.add(fingerprint);
+
+      const shortlistId = crypto.randomUUID();
+      current.current = {
+        id: shortlistId,
+        ranks: new Map(dishIds.map((id, i) => [id, i + 1])),
+      };
 
       // see useProfile: a discarded builder never issues a request
       supabase
         .from("recommendation_events")
         .insert(
-          dishIds.map((dish_id) => ({
+          dishIds.map((dish_id, i) => ({
             user_id: userId,
             dish_id,
             city,
             slot,
             action: "shown" as const,
+            rank: i + 1,
+            shortlist_id: shortlistId,
             ...ctx,
           })),
         )
@@ -87,6 +103,8 @@ export function useEventLog(userId: string | null) {
           city,
           slot,
           action: "clicked" as const,
+          rank: current.current?.ranks.get(dishId) ?? null,
+          shortlist_id: current.current?.id ?? null,
           ...ctx,
         })
         .then(({ error }) => {
