@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
+import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 import { CITIES } from "@/lib/cities";
 import { slugify } from "@/lib/posts";
 
@@ -254,6 +255,37 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
     // against different policies, and three wrong guesses came from treating
     // them as one thing.
     const steps: string[] = [];
+
+    // The raw exchange, because every layer above it has now reported
+    // something that turned out not to be true. supabase-js said the insert
+    // succeeded and no row exists; this shows exactly what PostgREST replied,
+    // with no interpretation in between.
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/restaurants`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${token ?? SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          slug: `zz-raw-${Date.now()}`,
+          name: "Raw probe",
+          city: "hyderabad",
+          listed: false,
+        }),
+      });
+      const body = await res.text();
+      steps.push(
+        `0 raw POST: HTTP ${res.status} ${res.statusText} · token ${token ? "present" : "MISSING — sending the anon key instead"} · body ${body.slice(0, 220) || "(empty)"}`,
+      );
+    } catch (e) {
+      steps.push(`0 raw POST threw: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
     try {
       const bare = await supabase.from("restaurants").insert(row);
       steps.push(`1 plain insert: ${say(bare.error)}`);
