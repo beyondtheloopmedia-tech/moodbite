@@ -360,6 +360,18 @@ export function recommend(
     .filter((d) => (fasting ? d.fastingSafe === true : d.fastingSafe !== true))
     .filter((d) => d.slots.includes(slot))
     .filter((d) => d.eta <= maxEta)
+    // Quantity is a statement, not a flavour. "Just a nibble" and "feed me
+    // properly" are two steps apart, and something two steps from what was
+    // asked for is not a compromise, it is the wrong answer: a snack offered to
+    // somebody who said feed me properly reads as the machine not listening.
+    //
+    // This was a -0.18 penalty, which other terms routinely outbid - the
+    // diversity penalty alone reaches 0.8. Measured before: 11.4% of everything
+    // shown for "feast" was a snack.
+    //
+    // Deliberately a filter rather than a bigger penalty, for the same reason
+    // diet is: there is no score high enough to make it right.
+    .filter((d) => Math.abs(PORTION_ORDER[d.portion] - wantPortion) < 2)
     .map((dish) => {
       const totalWeight = AXES.reduce((s, a) => s + weights[a], 0);
       const distance = AXES.reduce(
@@ -368,9 +380,10 @@ export function recommend(
       );
       let score = 1 - distance / totalWeight;
 
-      // portion fit: exact match rewarded, two steps away penalised hard
+      // Portion fit. Two steps off is filtered out above, so this decides
+      // between an exact match and a near one only.
       const gap = Math.abs(PORTION_ORDER[dish.portion] - wantPortion);
-      score += gap === 0 ? 0.08 : gap === 1 ? -0.04 : -0.18;
+      score += gap === 0 ? 0.08 : -0.12;
 
       // arriving comfortably inside the patience window is worth a little
       if (maxEta < 900) score += ((maxEta - dish.eta) / maxEta) * 0.03;
