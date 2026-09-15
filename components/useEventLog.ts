@@ -55,6 +55,7 @@ export function useEventLog(userId: string | null) {
             city,
             slot,
             action: "shown" as const,
+            ...ctx,
           })),
         )
         .then(({ error }) => {
