@@ -199,37 +199,50 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
     // can write a listing is to write one, so it writes one and takes it away
     // again - which is why 0019 exists.
     const probe = `zz-access-probe-${Date.now()}`;
-    let wrote = "";
+    const row = {
+      slug: probe,
+      name: "Access probe",
+      area: null,
+      city: "hyderabad",
+      lat: 17.385,
+      lon: 78.4867,
+      cuisines: [],
+      price_band: null,
+      veg_only: false,
+      listed: false,
+    };
+    const say = (e: { message: string; code?: string } | null) =>
+      e ? `FAILED ${e.code ? `[${e.code}] ` : ""}${e.message}` : "ok";
+
+    // Each step on its own, because "it was refused" does not say which half.
+    // An insert and an insert-that-reads-itself-back are different requests
+    // against different policies, and three wrong guesses came from treating
+    // them as one thing.
+    const steps: string[] = [];
     try {
-      // The same shape the form builds, through the same function, so this
-      // cannot pass while a real save fails.
-      const { error } = await writeListing(
-        {
-          slug: probe,
-          name: "Access probe",
-          area: null,
-          city: "hyderabad",
-          lat: 17.385,
-          lon: 78.4867,
-          cuisines: [],
-          price_band: null,
-          veg_only: false,
-          listed: false,
-        },
-        "",
+      const bare = await supabase.from("restaurants").insert(row);
+      steps.push(`1 plain insert: ${say(bare.error)}`);
+
+      const back = await supabase.from("restaurants").select("id").eq("slug", probe);
+      steps.push(
+        `2 read it back: ${back.error ? say(back.error) : `${back.data?.length ?? 0} row(s)`}`,
       );
-      if (error) {
-        console.error("moodbite: access probe write failed", error);
-        wrote = `write REFUSED — ${error.message}${error.code ? ` (${error.code})` : ""}`;
-      } else {
-        const { error: delErr } = await supabase.from("restaurants").delete().eq("slug", probe);
-        wrote = delErr
-          ? `write worked, cleanup failed — remove ${probe} by hand (${delErr.message})`
-          : "write worked and cleaned up";
-      }
+
+      await supabase.from("restaurants").delete().eq("slug", probe);
+
+      const combined = await writeListing({ ...row, slug: `${probe}-b` }, "");
+      steps.push(`3 insert+select+single (what the form does): ${say(combined.error)}`);
+
+      const cleanup = await supabase
+        .from("restaurants")
+        .delete()
+        .like("slug", `${probe}%`);
+      steps.push(`4 cleanup: ${say(cleanup.error)}`);
     } catch (e) {
-      wrote = `write threw — ${e instanceof Error ? e.message : String(e)}`;
+      steps.push(`threw: ${e instanceof Error ? e.message : String(e)}`);
     }
+    const wrote = steps.join(" · ");
+    console.log("moodbite access probe", steps);
 
     setNotice(`This tab: ${who} · is_admin() says ${says} · ${wrote}`);
   }
