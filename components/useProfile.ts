@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { parseInterests, type InterestId } from "@/lib/interests";
-import type { Diet } from "@/lib/types";
+import type { Diet, SpiceLevel } from "@/lib/types";
 
 const STORAGE_KEY = "moodbite.interests";
 
@@ -45,6 +45,8 @@ export function useProfile(userId: string | null) {
   const [ready, setReady] = useState(false);
   const [hasProfileRow, setHasProfileRow] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [spice, setSpice] = useState<SpiceLevel | null>(null);
+  const [avoidCuisines, setAvoidCuisines] = useState<string[]>([]);
   const merged = useRef<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +59,8 @@ export function useProfile(userId: string | null) {
       setDiet(null);
       setHasProfileRow(false);
       setIsPro(false);
+      setSpice(null);
+      setAvoidCuisines([]);
       setReady(true);
       return;
     }
@@ -65,7 +69,7 @@ export function useProfile(userId: string | null) {
     (async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("interests, home_city, diet, is_pro")
+        .select("interests, home_city, diet, is_pro, spice_level, avoid_cuisines")
         .eq("id", userId)
         .maybeSingle();
 
@@ -83,6 +87,8 @@ export function useProfile(userId: string | null) {
       setDiet((data?.diet as Diet | null) ?? null);
       setHasProfileRow(Boolean(data));
       setIsPro(Boolean(data?.is_pro));
+      setSpice((data?.spice_level as SpiceLevel | null) ?? null);
+      setAvoidCuisines(data?.avoid_cuisines ?? []);
 
       // First sign-in on this browser: carry what was picked while signed out
       // rather than silently discarding it for an empty profile.
@@ -134,10 +140,18 @@ export function useProfile(userId: string | null) {
 
   /** Writes the whole profile at once, from the setup step. */
   const saveProfile = useCallback(
-    async (next: { homeCity: string | null; diet: Diet | null; interests: InterestId[] }) => {
+    async (next: {
+      homeCity: string | null;
+      diet: Diet | null;
+      interests: InterestId[];
+      spice: SpiceLevel | null;
+      avoidCuisines: string[];
+    }) => {
       setHomeCity(next.homeCity);
       setDiet(next.diet);
       setInterests(next.interests);
+      setSpice(next.spice);
+      setAvoidCuisines(next.avoidCuisines);
       writeLocal(next.interests);
 
       const supabase = getSupabaseBrowser();
@@ -148,6 +162,8 @@ export function useProfile(userId: string | null) {
         home_city: next.homeCity,
         diet: next.diet,
         interests: next.interests,
+        spice_level: next.spice,
+        avoid_cuisines: next.avoidCuisines,
       });
       if (error) console.warn("moodbite: could not save profile", error.message);
       return !error;
@@ -160,5 +176,16 @@ export function useProfile(userId: string | null) {
   // can be set without an account, so having some is no evidence of setup.
   const needsSetup = Boolean(userId) && ready && hasProfileRow && !homeCity && !diet;
 
-  return { interests, toggle, homeCity, diet, isPro, saveProfile, ready, needsSetup };
+  return {
+    interests,
+    toggle,
+    homeCity,
+    diet,
+    isPro,
+    spice,
+    avoidCuisines,
+    saveProfile,
+    ready,
+    needsSetup,
+  };
 }

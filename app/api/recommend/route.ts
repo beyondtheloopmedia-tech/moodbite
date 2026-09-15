@@ -5,7 +5,15 @@ import { fetchWeather } from "@/lib/weather";
 import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { SLOTS, isActivity, type Activity, type Answers, type Slot } from "@/lib/types";
+import {
+  SLOTS,
+  isActivity,
+  isSpiceLevel,
+  type Activity,
+  type Answers,
+  type Slot,
+  type SpiceLevel,
+} from "@/lib/types";
 
 export async function POST(req: Request) {
   let body: {
@@ -16,6 +24,8 @@ export async function POST(req: Request) {
     interests?: unknown;
     fasting?: unknown;
     activity?: unknown;
+    spice?: unknown;
+    avoidCuisines?: unknown;
   };
   try {
     body = await req.json();
@@ -49,6 +59,13 @@ export async function POST(req: Request) {
   // older build is not worth failing a request over
   const interests = parseInterests(body.interests);
 
+  // Standing preferences. Unknown values are dropped rather than rejected: a
+  // stale preference from an older build should not fail the request.
+  const spice: SpiceLevel | null = isSpiceLevel(body.spice) ? body.spice : null;
+  const avoidCuisines = Array.isArray(body.avoidCuisines)
+    ? body.avoidCuisines.filter((c): c is string => typeof c === "string")
+    : [];
+
   const dishes = await getSource().list(city?.slug ?? "india");
   const fasting = body.fasting === true;
 
@@ -78,6 +95,8 @@ export async function POST(req: Request) {
     interests,
     fasting,
     activity,
+    spice,
+    avoidCuisines,
   );
 
   // An empty list is a valid answer, not an error. Results renders the copy.

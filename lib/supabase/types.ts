@@ -20,6 +20,8 @@ export interface Database {
           email: string | null;
           is_admin: boolean;
           is_pro: boolean;
+          spice_level: string | null;
+          avoid_cuisines: string[];
           created_at: string;
           updated_at: string;
         };
@@ -28,11 +30,15 @@ export interface Database {
           interests?: InterestId[];
           diet?: Diet | null;
           home_city?: string | null;
+          spice_level?: string | null;
+          avoid_cuisines?: string[];
         };
         Update: {
           interests?: InterestId[];
           diet?: Diet | null;
           home_city?: string | null;
+          spice_level?: string | null;
+          avoid_cuisines?: string[];
         };
         Relationships: [];
       };

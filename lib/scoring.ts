@@ -1,7 +1,7 @@
 import { CUISINE_HOME } from "./cities";
 import type { Weather } from "./weather";
 import { INTERESTS, type InterestId } from "./interests";
-import { AXES, type Activity, type Answers, type City, type Dish, type Recommendation, type Slot, type Vector } from "./types";
+import { AXES, type Activity, type Answers, type City, type Dish, type Recommendation, type Slot, type SpiceLevel, type Vector } from "./types";
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
 
@@ -118,11 +118,15 @@ export function buildProfile(
   weather?: Weather | null,
   interests: InterestId[] = [],
   activity?: Activity | null,
+  spice?: SpiceLevel | null,
 ): Profile {
   const target: Vector = {
     comfort: 0.5,
     indulgence: 0.5,
-    heat: 0.45,
+    // The one axis where people differ before any question is asked. 0.45 was
+    // a guess applied to everybody; a stated tolerance replaces it, and mood,
+    // weather and the slider all still move from there.
+    heat: spice === "mild" ? 0.2 : spice === "hot" ? 0.75 : 0.45,
     lightness: 0.5,
     novelty: 0.3,
     sweetness: 0.25,
@@ -289,6 +293,8 @@ export function recommend(
   interests: InterestId[] = [],
   fasting = false,
   activity: Activity | null = null,
+  spice: SpiceLevel | null = null,
+  avoidCuisines: string[] = [],
 ): Recommendation[] {
   const { target, weights, maxEta } = buildProfile(
     answers,
@@ -296,6 +302,7 @@ export function recommend(
     weather,
     interests,
     activity,
+    spice,
   );
   // "How hungry?" is answered for one person. When people are over, the order
   // is for several, so the wanted portion moves up a step. Without this the
@@ -309,6 +316,8 @@ export function recommend(
 
   const scored = dishes
     .filter((d) => dietOk(d, answers.diet))
+    // "I do not eat that" is not a preference to be weighed against flavour.
+    .filter((d) => !avoidCuisines.includes(d.cuisine))
     // A vrat is a hard rule, not a preference: an unorderable dish is worse
     // than no suggestion, so this filters rather than nudges.
     //

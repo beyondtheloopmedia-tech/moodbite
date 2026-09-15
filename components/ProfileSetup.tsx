@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { CITIES } from "@/lib/cities";
 import { INTERESTS, type InterestId } from "@/lib/interests";
-import type { Diet } from "@/lib/types";
+import { DISHES } from "@/lib/dishes";
+import type { Diet, SpiceLevel } from "@/lib/types";
+
+const CUISINES = [...new Set(DISHES.map((d) => d.cuisine))].sort();
+
+const SPICE: { value: SpiceLevel; label: string }[] = [
+  { value: "mild", label: "Keep it mild" },
+  { value: "medium", label: "Middle of the road" },
+  { value: "hot", label: "Bring the heat" },
+];
 
 const DIETS: { value: Diet; label: string }[] = [
   { value: "veg", label: "Veg only" },
@@ -22,18 +31,33 @@ const DIETS: { value: Diet; label: string }[] = [
 export default function ProfileSetup({
   initialInterests,
   initialCity,
+  initialSpice,
+  initialAvoid,
   onSave,
   onSkip,
 }: {
   initialInterests: InterestId[];
   initialCity: string | null;
-  onSave: (v: { homeCity: string | null; diet: Diet | null; interests: InterestId[] }) => void;
+  initialSpice: SpiceLevel | null;
+  initialAvoid: string[];
+  onSave: (v: {
+    homeCity: string | null;
+    diet: Diet | null;
+    interests: InterestId[];
+    spice: SpiceLevel | null;
+    avoidCuisines: string[];
+  }) => void;
   onSkip: () => void;
 }) {
   const [homeCity, setHomeCity] = useState(initialCity ?? "");
   const [diet, setDiet] = useState<Diet | "">("");
   const [interests, setInterests] = useState<InterestId[]>(initialInterests);
+  const [spice, setSpice] = useState<SpiceLevel | "">(initialSpice ?? "");
+  const [avoid, setAvoid] = useState<string[]>(initialAvoid);
   const [saving, setSaving] = useState(false);
+
+  const toggleAvoid = (c: string) =>
+    setAvoid((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));
 
   const toggle = (id: InterestId) =>
     setInterests((p) => (p.includes(id) ? p.filter((i) => i !== id) : [...p, id]));
@@ -47,10 +71,11 @@ export default function ProfileSetup({
         className="w-full max-w-lg bg-sage p-6 shadow-lg sm:p-8"
       >
         <h2 id="setup-title" className="font-display text-2xl leading-tight">
-          Set up your profile
+          Your usual
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
-          So you can skip some of this next time. All of it is optional.
+          Set once and the six questions get shorter every time after. All of it is
+          optional, and all of it can be changed later.
         </p>
 
         <div className="mt-6">
@@ -94,6 +119,50 @@ export default function ProfileSetup({
         </fieldset>
 
         <fieldset className="mt-6">
+          <legend className="text-sm text-ink-soft">How much heat do you take?</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {SPICE.map((sp) => (
+              <button
+                key={sp.value}
+                type="button"
+                onClick={() => setSpice(spice === sp.value ? "" : sp.value)}
+                aria-pressed={spice === sp.value}
+                className={`border px-3 py-1.5 text-sm transition-colors ${
+                  spice === sp.value
+                    ? "border-ink bg-ink text-paper"
+                    : "border-ink/30 text-ink hover:bg-sage-deep"
+                }`}
+              >
+                {sp.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-6">
+          <legend className="text-sm text-ink-soft">
+            Anything you would rather never see?
+          </legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {CUISINES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => toggleAvoid(c)}
+                aria-pressed={avoid.includes(c)}
+                className={`border px-2.5 py-1 text-sm transition-colors ${
+                  avoid.includes(c)
+                    ? "border-ink bg-ink text-paper line-through"
+                    : "border-ink/30 text-ink hover:bg-sage-deep"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-6">
           <legend className="text-sm text-ink-soft">Anything you lean towards?</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {INTERESTS.map((i) => (
@@ -123,6 +192,8 @@ export default function ProfileSetup({
                 homeCity: homeCity || null,
                 diet: diet || null,
                 interests,
+                spice: spice || null,
+                avoidCuisines: avoid,
               });
               setSaving(false);
             }}

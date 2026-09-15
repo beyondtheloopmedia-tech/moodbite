@@ -92,11 +92,21 @@ export default function MoodQuiz() {
   const { city, status, km, locate, choose: chooseCity, cities, radiusKm } = useCity();
   const { now, dayPart, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
-  const { interests, toggle: toggleInterest, homeCity, isPro, saveProfile, needsSetup } =
-    useProfile(userId);
+  const {
+    interests,
+    toggle: toggleInterest,
+    homeCity,
+    isPro,
+    spice,
+    avoidCuisines,
+    saveProfile,
+    needsSetup,
+  } = useProfile(userId);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [setupSkipped, setSetupSkipped] = useState(false);
+  // Set once and never changeable is not a preference, it is a trap.
+  const [editingProfile, setEditingProfile] = useState(false);
   // A fast is a fact about today, not a standing preference, so it is session
   // state and is never persisted.
   const [fasting, setFasting] = useState(false);
@@ -139,6 +149,8 @@ export default function MoodQuiz() {
           interests,
           fasting,
           activity,
+          spice,
+          avoidCuisines,
         }),
         });
         const data = await res.json();
@@ -151,14 +163,14 @@ export default function MoodQuiz() {
         setBusy(false);
       }
     },
-    [slot, city, interests, fasting, activity],
+    [slot, city, interests, fasting, activity, spice, avoidCuisines],
   );
 
   useEffect(() => {
     if (!results) return;
     void fetchResults(answers as Answers, heat);
     // answers and heat are fixed by this point; the city is what changed
-  }, [city?.slug, interests, fasting, activity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [city?.slug, interests, fasting, activity, spice, avoidCuisines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!results) return;
@@ -203,8 +215,9 @@ export default function MoodQuiz() {
           I&apos;ll tell you what to eat.
         </h1>
         <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
-          Six questions about your mood, not your cravings. The craving is usually
-          downstream of the mood anyway.
+          Stop losing twenty minutes to three apps and a menu you have already read.
+          Six questions about how you feel, four things in front of you, and you pick
+          one. The craving is usually downstream of the mood anyway.
         </p>
         <div className="mt-8">
           <CityBar
@@ -357,27 +370,43 @@ export default function MoodQuiz() {
           sendLink(address);
         }}
       />
-      {needsSetup && !setupSkipped && (
+      {((needsSetup && !setupSkipped) || editingProfile) && (
         <ProfileSetup
           initialInterests={interests}
           initialCity={homeCity ?? city?.slug ?? null}
+          initialSpice={spice}
+          initialAvoid={avoidCuisines}
           onSave={async (v) => {
             await saveProfile(v);
             setSetupSkipped(true);
+            setEditingProfile(false);
           }}
-          onSkip={() => setSetupSkipped(true)}
+          onSkip={() => {
+            setSetupSkipped(true);
+            setEditingProfile(false);
+          }}
         />
       )}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <AmbienceBar now={now} greeting={greeting} weather={weather} weatherLine={weatherLine} />
-        <AccountBar
-          state={authState}
-          email={email}
-          problem={problem}
-          onSend={sendLink}
-          onVerify={verifyCode}
-          onSignOut={signOut}
-        />
+        <div className="flex flex-wrap items-baseline justify-end gap-x-3 gap-y-1">
+          {authState === "signedIn" && (
+            <button
+              onClick={() => setEditingProfile(true)}
+              className="text-sm text-ink-soft underline underline-offset-4"
+            >
+              Preferences
+            </button>
+          )}
+          <AccountBar
+            state={authState}
+            email={email}
+            problem={problem}
+            onSend={sendLink}
+            onVerify={verifyCode}
+            onSignOut={signOut}
+          />
+        </div>
       </div>
       <div className="mt-8">{body()}</div>
     </div>

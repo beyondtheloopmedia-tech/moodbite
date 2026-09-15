@@ -128,8 +128,28 @@ what the thing does is how you lose them. It is dismissible by Escape, by the
 backdrop or by "Not now", and the dismissal is remembered, so it appears once
 and never again.
 
-Straight after a first sign-in there is a profile step: default city, diet and
-standing preferences. It fills `home_city` and `diet`, which existed in the
+Straight after a first sign-in there is a profile step, reachable afterwards
+from **Preferences** in the header - set once and never changeable is not a
+preference, it is a trap.
+
+Four questions, each one clickable and each one changing an input the engine
+actually reads:
+
+| Question | What it moves |
+| --- | --- |
+| Where you usually order | `home_city`, the default city |
+| Anything off the table? | `diet`, a hard filter |
+| How much heat do you take? | the baseline of the heat axis, which was 0.45 for every person alive |
+| Anything you would rather never see? | excludes whole cuisines outright |
+| Anything you lean towards? | the six standing preferences |
+
+The last two are the ones that were missing. The heat axis had a single
+hardcoded starting point for everybody, and the engine could cap two dishes per
+cuisine but had no way to rule one out across seventeen of them. Mood, weather
+and the heat slider all still move from the stated baseline; "I do not eat
+that" is a filter rather than a preference to be weighed.
+
+The original profile step: default city, diet and standing preferences. It fills `home_city` and `diet`, which existed in the
 schema from the beginning and which nothing ever wrote - every account showed
 no city because of it. Every field is skippable; the six questions remain the
 product.

@@ -10,6 +10,11 @@ export type Diet = "veg" | "egg" | "anything";
  * rather than its flavour. Watching something wants one hand free and no
  * mess; eating with people wants something worth sharing.
  */
+export type SpiceLevel = "mild" | "medium" | "hot";
+export const SPICE_LEVELS: SpiceLevel[] = ["mild", "medium", "hot"];
+export const isSpiceLevel = (v: unknown): v is SpiceLevel =>
+  typeof v === "string" && (SPICE_LEVELS as string[]).includes(v);
+
 export type Activity = "watching" | "working" | "company";
 export const ACTIVITIES: Activity[] = ["watching", "working", "company"];
 export const isActivity = (v: unknown): v is Activity =>
