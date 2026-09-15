@@ -102,7 +102,7 @@ export default async function AdminPage() {
     supabase
       .from("recommendation_events")
       .select(
-        "dish_id, action, mood, energy, hunger, palate, patience, diet, slot, day_part, city, weather, temp_c, interests, heat_override, rank, shortlist_id, created_at",
+        "user_id, dish_id, action, mood, energy, hunger, palate, patience, diet, slot, day_part, city, weather, temp_c, interests, heat_override, rank, shortlist_id, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(5000),
@@ -129,6 +129,28 @@ export default async function AdminPage() {
   // makes a number usable.
   const withPhoneOk = rows.filter((p) => p.phone && p.phone_contact_ok).length;
   const withInterests = rows.filter((p) => (p.interests?.length ?? 0) > 0).length;
+
+  // What each account has actually done. The table listed who signed up and
+  // what they said they liked, and nothing about whether they ever came back -
+  // which is the only column that says whether any of the rest matters.
+  type Activity = { shown: number; clicked: number; shortlists: Set<string>; last: number };
+  const activity = new Map<string, Activity>();
+  for (const e of log as {
+    user_id: string | null;
+    action: string;
+    shortlist_id: string | null;
+    created_at: string;
+  }[]) {
+    if (!e.user_id) continue;
+    const cur =
+      activity.get(e.user_id) ?? { shown: 0, clicked: 0, shortlists: new Set<string>(), last: 0 };
+    if (e.action === "clicked") cur.clicked += 1;
+    else cur.shown += 1;
+    if (e.shortlist_id) cur.shortlists.add(e.shortlist_id);
+    cur.last = Math.max(cur.last, new Date(e.created_at).getTime());
+    activity.set(e.user_id, cur);
+  }
+  const everActive = rows.filter((p) => activity.has(p.id)).length;
 
   const interestTally = new Map<string, number>();
   for (const p of rows) for (const i of p.interests ?? []) interestTally.set(i, (interestTally.get(i) ?? 0) + 1);
@@ -194,7 +216,81 @@ export default async function AdminPage() {
           people: treat it the way you would any list of your users&apos; addresses.
         </p>
 
-        <div className="mt-4 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+        <div className="mt-6 overflow-x-auto">
+          <h3 className="text-sm text-ink-soft">Accounts</h3>
+          <table className="mt-2 w-full min-w-[58rem] text-sm">
+            <thead>
+              <tr className="border-b border-ink/20 text-left text-ink-soft">
+                <th className="py-2 font-normal">Email</th>
+                <th className="py-2 font-normal">Phone</th>
+                <th className="py-2 font-normal">Joined</th>
+                <th className="py-2 font-normal">Last seen</th>
+                <th className="py-2 font-normal">Asked</th>
+                <th className="py-2 font-normal">Picked</th>
+                <th className="py-2 font-normal">City</th>
+                <th className="py-2 font-normal">Heat</th>
+                <th className="py-2 font-normal">Preferences</th>
+                <th className="py-2 font-normal">Pro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.id} className="border-b border-ink/10">
+                  <td className="py-2.5 pr-4">{p.email ?? <span className="text-ink-soft">—</span>}</td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.phone ? (
+                      <>
+                        {p.phone}
+                        {/* A number on file is not permission to use it. */}
+                        {!p.phone_contact_ok && (
+                          <span className="ml-1 text-ink-soft/70">(no consent)</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
+                    {new Date(p.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
+                    {activity.get(p.id)?.last
+                      ? new Date(activity.get(p.id)!.last).toLocaleDateString()
+                      : "never"}
+                  </td>
+                  {/* Shortlists asked for, and how many ended in a click. Signed out
+                      there is nothing to attribute, so somebody who only ever used it
+                      logged out reads as never. */}
+                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
+                    {activity.get(p.id)?.shortlists.size ?? 0}
+                  </td>
+                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
+                    {activity.get(p.id)?.clicked ?? 0}
+                  </td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.home_city ? (CITY_NAME.get(p.home_city) ?? p.home_city) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-ink-soft">{p.spice_level ?? "—"}</td>
+                  <td className="py-2.5 pr-4 text-ink-soft">
+                    {p.interests?.length
+                      ? p.interests.map((i) => INTEREST_LABEL.get(i) ?? i).join(", ")
+                      : "none set"}
+                  </td>
+                  <td className="py-2.5 text-ink-soft">{p.is_pro ? "yes" : "—"}</td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="py-4 text-ink-soft">
+                    No accounts yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-12 grid gap-x-10 gap-y-6 sm:grid-cols-2">
           <div>
             <h3 className="text-sm text-ink-soft">Accounts</h3>
             <ul className="mt-1">
@@ -214,6 +310,7 @@ export default async function AdminPage() {
               <Stat label="Gave a phone number" value={withPhone} of={rows.length} />
               <Stat label="Agreed to be contacted" value={withPhoneOk} of={rows.length} />
               <Stat label="Picked any preference" value={withInterests} of={rows.length} />
+              <Stat label="Ever asked for a suggestion" value={everActive} of={rows.length} />
             </ul>
           </div>
 
@@ -268,63 +365,6 @@ export default async function AdminPage() {
               </p>
             </div>
           )}
-        </div>
-
-        <div className="mt-10 overflow-x-auto">
-          <h3 className="text-sm text-ink-soft">Accounts</h3>
-          <table className="mt-2 w-full min-w-[44rem] text-sm">
-            <thead>
-              <tr className="border-b border-ink/20 text-left text-ink-soft">
-                <th className="py-2 font-normal">Email</th>
-                <th className="py-2 font-normal">Phone</th>
-                <th className="py-2 font-normal">Joined</th>
-                <th className="py-2 font-normal">City</th>
-                <th className="py-2 font-normal">Heat</th>
-                <th className="py-2 font-normal">Preferences</th>
-                <th className="py-2 font-normal">Pro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-b border-ink/10">
-                  <td className="py-2.5 pr-4">{p.email ?? <span className="text-ink-soft">—</span>}</td>
-                  <td className="py-2.5 pr-4 text-ink-soft">
-                    {p.phone ? (
-                      <>
-                        {p.phone}
-                        {/* A number on file is not permission to use it. */}
-                        {!p.phone_contact_ok && (
-                          <span className="ml-1 text-ink-soft/70">(no consent)</span>
-                        )}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="py-2.5 pr-4 tabular-nums text-ink-soft">
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="py-2.5 pr-4 text-ink-soft">
-                    {p.home_city ? (CITY_NAME.get(p.home_city) ?? p.home_city) : "—"}
-                  </td>
-                  <td className="py-2.5 pr-4 text-ink-soft">{p.spice_level ?? "—"}</td>
-                  <td className="py-2.5 pr-4 text-ink-soft">
-                    {p.interests?.length
-                      ? p.interests.map((i) => INTEREST_LABEL.get(i) ?? i).join(", ")
-                      : "none set"}
-                  </td>
-                  <td className="py-2.5 text-ink-soft">{p.is_pro ? "yes" : "—"}</td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-4 text-ink-soft">
-                    No accounts yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </section>
 
