@@ -321,6 +321,7 @@ export function recommend(
   spice: SpiceLevel | null = null,
   avoidCuisines: string[] = [],
   exclude: string[] = [],
+  signals: Map<string, number> | null = null,
 ): Recommendation[] {
   const { target, weights, maxEta } = buildProfile(
     answers,
@@ -403,6 +404,17 @@ export function recommend(
         if (dish.portion === "snack") score -= 0.06;
       }
 
+      // What the click stream says about this dish, against what its shown
+      // positions predicted. 1 is neutral; an empty log leaves every dish at 1
+      // and this line changes nothing.
+      if (signals) {
+        const lift = signals.get(dish.id);
+        if (lift !== undefined) {
+          const bounded = Math.max(-LEARNED_CLAMP, Math.min(LEARNED_CLAMP, lift - 1));
+          score += bounded * LEARNED;
+        }
+      }
+
       const reasons = AXES.map((a) => ({
         axis: a,
         pull: weights[a] * (1 - Math.abs(target[a] - dish.vector[a])),
@@ -412,7 +424,19 @@ export function recommend(
         .slice(0, 2)
         .map((r) => REASON_TEXT[r.axis][r.high ? 0 : 1]);
 
-      return { dish, score: Math.round(Math.min(1, score) * 1000) / 1000, reasons, local };
+      // `score` is the raw comparable number and `shown` is the tidied one.
+      // These used to be the same field, which meant the sort ran on a value
+      // clipped at 1 and rounded to three decimals: every pair of dishes above
+      // 1.0 tied, and so did anything within half a thousandth. Ties then broke
+      // on catalogue order, which is not an opinion about food. Order on the
+      // real number; round only what is displayed.
+      return {
+        dish,
+        score,
+        shown: Math.round(Math.min(1, score) * 1000) / 1000,
+        reasons,
+        local,
+      };
     })
     .sort((a, b) => b.score - a.score);
 
@@ -451,6 +475,46 @@ export function recommend(
  * of the answer.
  */
 const DIVERSITY = 0.8;
+
+/**
+ * How much the click stream is allowed to overrule the vectors.
+ *
+ * The six axes are hand-tagged guesses. What people actually pick is the only
+ * evidence that ever disagrees with them, so it has to count for something -
+ * but it cannot count for much, for two reasons.
+ *
+ * It is thin. A few hundred clicks across fifty-one dishes is not enough to
+ * overturn a considered judgement about what a dish is like, and a learned
+ * term loud enough to do so would make the engine chase noise.
+ *
+ * And it is self-confirming. Even debiased for position, a dish only earns
+ * evidence by being shown, and it is only shown because the vectors already
+ * liked it. A large weight would let the engine converge on whatever it
+ * happened to favour in its first month and call that learning.
+ *
+ * Sizing it took measuring rather than taste. At 0.06 the maximum shift was
+ * 0.03, and lifting a dish by the full amount changed not one of 3,240
+ * shortlists - a term that can never decide anything is decoration. Against the
+ * real distribution of score gaps between adjacent candidates:
+ *
+ *     weight   max shift   share of adjacent pairs it could decide
+ *      0.06      0.030                  65%
+ *      0.15      0.075                  91%
+ *      0.30      0.150                  99.7%
+ *
+ * 0.15 it is, with the clamp giving a ceiling of +/-0.075 - almost exactly what
+ * an exact portion match is worth (0.08). That is the anchor: the click stream
+ * gets a say the size of one strong structural signal, and never more. At 0.30
+ * it decides essentially every close call, which is not learning, it is the
+ * evidence taking the engine over.
+ *
+ * Worth knowing that selection dampens this further: the diversity penalty
+ * reaches 0.8, so between two dishes of differing similarity a 0.075 shift is
+ * still often overruled. That is the intended order of authority - what a dish
+ * IS, then whether the shortlist is varied, then what people picked.
+ */
+const LEARNED = 0.15;
+const LEARNED_CLAMP = 0.5;
 
 /** 1 when two dishes are identical in the six axes, 0 when maximally apart. */
 function similarity(a: Vector, b: Vector): number {

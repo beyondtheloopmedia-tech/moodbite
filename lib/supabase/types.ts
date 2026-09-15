@@ -236,6 +236,16 @@ export interface Database {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       /** 'ok', 'month' (global budget spent) or 'day' (this client's share) */
       claim_places_call: { Args: { p_bucket: string }; Returns: string };
+      dish_signals: {
+        Args: Record<string, never>;
+        Returns: {
+          dish_id: string;
+          shown: number;
+          clicked: number;
+          expected: number;
+          lift: number;
+        }[];
+      };
       places_quota_status: {
         Args: Record<string, never>;
         Returns: {

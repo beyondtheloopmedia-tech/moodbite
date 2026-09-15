@@ -4,6 +4,7 @@ import { recommend, slotForHour, weatherBias } from "@/lib/scoring";
 import { fetchWeather } from "@/lib/weather";
 import { findCity } from "@/lib/cities";
 import { parseInterests } from "@/lib/interests";
+import { dishSignals } from "@/lib/signals";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import {
   SLOTS,
@@ -91,6 +92,10 @@ export async function POST(req: Request) {
       if (profile?.is_pro) activity = body.activity;
     }
   }
+  // What the click stream has learned so far. Cached, and empty is a normal
+  // answer that leaves the scorer exactly as it was.
+  const signals = await dishSignals();
+
   const ask = (skip: string[]) =>
     recommend(
       dishes,
@@ -106,6 +111,7 @@ export async function POST(req: Request) {
       spice,
       avoidCuisines,
       skip,
+      signals,
     );
 
   let results = ask(exclude);

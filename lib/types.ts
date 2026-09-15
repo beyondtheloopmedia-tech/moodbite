@@ -102,7 +102,10 @@ export interface Answers {
 
 export interface Recommendation {
   dish: Dish;
+  /** the raw comparable score; ordering must use this, never `shown` */
   score: number;
+  /** the same number clipped to 1 and rounded, for anything user-facing */
+  shown: number;
   /** the axes that drove the match, strongest first */
   reasons: string[];
   /** a signature dish of the city being ordered from */
