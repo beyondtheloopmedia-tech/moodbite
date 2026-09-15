@@ -173,6 +173,10 @@ export interface Database {
           cuisines?: string[];
           price_band?: number | null;
           veg_only?: boolean;
+          // Settable so one write path can serve both insert and update. It is
+          // still a join key only - see 0014, nothing may copy a Google name,
+          // address or rating into this table.
+          google_place_id?: string | null;
           listed?: boolean;
         };
         Relationships: [];
