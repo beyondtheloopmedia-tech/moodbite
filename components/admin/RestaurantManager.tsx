@@ -53,8 +53,43 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
   const locked = Boolean(draft?.id);
+
+  /**
+   * Fill the coordinates from where this device is right now.
+   *
+   * The real use is adding a place while standing in it, which is also the
+   * only way to get a coordinate that is certainly ours rather than lifted
+   * from a mapping provider whose terms forbid us keeping it.
+   */
+  function useMyLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setProblem("This browser will not share a location.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setDraft((d) =>
+          d
+            ? {
+                ...d,
+                lat: pos.coords.latitude.toFixed(6),
+                lon: pos.coords.longitude.toFixed(6),
+              }
+            : d,
+        );
+      },
+      () => {
+        setLocating(false);
+        setProblem("Could not read this device's location.");
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
+  }
 
   async function save() {
     if (!supabase || !draft) return;
@@ -159,9 +194,19 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
               className="mt-1 block w-full border-b border-ink/40 bg-transparent pb-1 text-sm focus:border-ink focus:outline-none" />
           </div>
         </div>
+        <button
+          type="button"
+          onClick={useMyLocation}
+          disabled={locating}
+          className="mt-3 border-b border-ink pb-0.5 text-sm disabled:opacity-50"
+        >
+          {locating ? "Reading location" : "Use this device's location"}
+        </button>
         <p className="mt-2 text-xs text-ink-soft">
           Coordinates are what make &quot;was there&quot; possible. Without them a listing can
           still be reviewed, but no review of it can ever be marked as written at the door.
+          Adding a place while standing in it is also the only way to get a coordinate that
+          is certainly ours rather than a mapping provider&apos;s.
         </p>
 
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
