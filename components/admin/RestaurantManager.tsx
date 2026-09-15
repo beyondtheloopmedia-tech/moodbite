@@ -173,15 +173,36 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
   async function checkAccess() {
     if (!supabase) return;
     setProblem(null);
+    setNotice("Checking…");
+
     const { data: auth } = await supabase.auth.getUser();
-    const { data: admin, error } = await supabase.rpc("is_admin");
-    setNotice(
-      `This tab: ${auth.user ? `signed in as ${auth.user.email ?? auth.user.id}` : "NOT SIGNED IN"}` +
-        ` · is_admin() says ${error ? `error — ${error.message}` : String(admin)}` +
-        (auth.user && admin === true
-          ? " · writes should work"
-          : " · writes will be refused, which is why nothing saves"),
-    );
+    const who = auth.user ? `signed in as ${auth.user.email ?? auth.user.id}` : "NOT SIGNED IN";
+    const { data: admin, error: adminErr } = await supabase.rpc("is_admin");
+    const says = adminErr ? `error — ${adminErr.message}` : String(admin);
+
+    // Asking is not proving. The only reliable way to know whether this browser
+    // can write a listing is to write one, so it writes one and takes it away
+    // again - which is why 0019 exists.
+    const probe = `zz-access-probe-${Date.now()}`;
+    let wrote = "";
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .insert({ slug: probe, name: "Access probe", city: "hyderabad", listed: false });
+      if (error) {
+        console.error("moodbite: access probe write failed", error);
+        wrote = `write REFUSED — ${error.message}${error.code ? ` (${error.code})` : ""}`;
+      } else {
+        const { error: delErr } = await supabase.from("restaurants").delete().eq("slug", probe);
+        wrote = delErr
+          ? `write worked, cleanup failed — remove ${probe} by hand (${delErr.message})`
+          : "write worked and cleaned up";
+      }
+    } catch (e) {
+      wrote = `write threw — ${e instanceof Error ? e.message : String(e)}`;
+    }
+
+    setNotice(`This tab: ${who} · is_admin() says ${says} · ${wrote}`);
   }
 
   if (!supabase) return <p className="mt-3 text-sm text-ink-soft">Supabase is not configured.</p>;
