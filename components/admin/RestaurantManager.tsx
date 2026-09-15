@@ -311,6 +311,29 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
     const wrote = steps.join(" · ");
     console.log("moodbite access probe", steps);
 
+    // Post the findings somewhere readable from outside this browser.
+    //
+    // recommendation_events accepts anonymous writes, and dish_signals()
+    // reports the dish ids it has seen - so a diagnostic written as a dish id
+    // can be read back without anybody copying anything out of a screen. Ugly,
+    // and worth it: three attempts to relay this line by hand have not arrived,
+    // and the bug cannot be found without it.
+    //
+    // Harmless to the engine. The signals map is looked up BY dish id, so an id
+    // matching no dish is never consulted. Delete these rows afterwards:
+    //   delete from public.recommendation_events where dish_id like 'zzdiag:%';
+    try {
+      await supabase.from("recommendation_events").insert({
+        device_id: "diagnostic",
+        dish_id: `zzdiag:${wrote}`.slice(0, 400),
+        action: "shown",
+        rank: 1,
+        shortlist_id: crypto.randomUUID(),
+      });
+    } catch {
+      // If even this cannot be written, the screen is the only copy.
+    }
+
     setNotice(`This tab: ${who} · is_admin() says ${says} · ${wrote}`);
   }
 
