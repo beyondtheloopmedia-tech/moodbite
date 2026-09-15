@@ -156,8 +156,15 @@ export function buildProfile(
       target.comfort += 0.35;
       target.indulgence += 0.15;
       target.novelty -= 0.25;
+      // Sweet is the most reported craving under emotional load (60%) and
+      // stress the most reported trigger (55%). The two are linked as a
+      // stress-reward association rather than being two separate facts, so
+      // stress reaches sweetness directly.
+      // Saraswat & Harle 2026, IJSRA 18(03) 981-991, tables 2 and 5.
+      target.sweetness += 0.2;
       weights.comfort += 0.8;
       weights.novelty += 0.4;
+      weights.sweetness += 0.3;
       break;
     case "flat":
       target.indulgence += 0.25;
@@ -265,12 +272,22 @@ export function recommend(
   city?: City,
   weather?: Weather | null,
   interests: InterestId[] = [],
+  fasting = false,
 ): Recommendation[] {
   const { target, weights, maxEta } = buildProfile(answers, heatOverride, weather, interests);
   const wantPortion = HUNGER_TO_PORTION[answers.hunger];
+  const thrifty = interests.includes("thrifty");
 
   const scored = dishes
     .filter((d) => dietOk(d, answers.diet))
+    // A vrat is a hard rule, not a preference: an unorderable dish is worse
+    // than no suggestion, so this filters rather than nudges.
+    //
+    // The filter runs both ways. Vrat dishes are deliberately plain - their
+    // vectors sit near the middle of the space, which made them win ordinary
+    // queries by being the least opinionated thing on the menu - and offering
+    // "vrat wale aloo" to someone who is not fasting reads as a mistake.
+    .filter((d) => (fasting ? d.fastingSafe === true : d.fastingSafe !== true))
     .filter((d) => d.slots.includes(slot))
     .filter((d) => d.eta <= maxEta)
     .map((dish) => {
@@ -292,6 +309,16 @@ export function recommend(
       // gets the whole catalogue, the home team just starts slightly ahead
       const local = isLocal(dish, city);
       if (local) score += 0.05;
+
+      // Price only counts when it has been asked for. PwC's Voice of the
+      // Consumer 2025 (India) puts price in the top three purchase factors for
+      // 39% and finds 63% concerned about the cost of food, but a silent
+      // always-on price bias would quietly reshape everyone's results, so it
+      // stays opt-in. priceBand was already on every dish and unread.
+      // 0.06 a band puts a cheap dish roughly level with an exact portion
+      // match (0.08); at half that the preference was measurable but never
+      // actually changed what came back.
+      if (thrifty) score += (3 - dish.priceBand) * 0.06;
 
       const reasons = AXES.map((a) => ({
         axis: a,

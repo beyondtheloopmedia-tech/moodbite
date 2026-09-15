@@ -144,6 +144,56 @@ so a row is only ever visible to the user it belongs to, with no read-all path, 
 the event log has no update or delete policy — a log that can be rewritten is not
 evidence of anything.
 
+## What the evidence changed
+
+Five sources were read against the engine. Three produced changes, one confirmed
+something already built, and one argued against a feature.
+
+**Stress reaches sweetness.** Sweet is the most reported craving under emotional
+load (60%) and stress the most reported trigger (55%); the paper frames these as a
+single stress-reward association rather than two facts. The engine raised comfort
+and indulgence under stress but never touched sweetness. It does now.
+*Saraswat & Harle 2026, IJSRA 18(03) 981-991.*
+
+**Price counts, when asked for.** `priceBand` sat on all 46 dishes and was read
+nowhere. Price is a top-three purchase factor for 39% of Indian consumers with 63%
+concerned about food cost, and deals (36) rank almost level with cuisine (37) when
+choosing where to order. A *Watching the spend* preference now applies a price fit,
+the same shape as the existing portion fit. It stays opt-in rather than always-on,
+because a silent price bias would quietly reshape everyone's results.
+*PwC Voice of the Consumer 2025 India; Uber Eats / Ipsos, Food Moods of India.*
+
+**Fasting is a mode, not an edge case.** A 19M-row dataset of Indian fasting
+observance covers ramadan, navratri, ekadashi and monday fasts, with a permitted
+food vocabulary of sabudana, kuttu, singhara, fruit, dairy and rock salt. The
+catalogue contained none of it, so on a vrat day the entire app was unorderable.
+Five vrat dishes were added and the filter runs **both ways**: vrat dishes are
+deliberately plain, which made them win ordinary queries by being the least
+opinionated option, and offering *vrat wale aloo* to someone who is not fasting
+reads as a mistake.
+*darshvit20/NutriRecIndia19M.*
+
+**Weather was already right.** Consumption-value research on Indian staple food
+delivery records weather as a contextual variable alongside the five value
+dimensions, and situational context is one of those dimensions. The engine's
+functional (eta, price), emotional (the six answers), conditional (weather, day
+part, fasting) and epistemic (novelty) coverage all map onto that model.
+*Theory of Consumption Value in Indian Staple Food Delivery.*
+
+**And one feature the evidence argued against.** An obvious next question is "who
+are you eating with", since social value is the one consumption dimension the
+engine does not model. The Ipsos survey of 4,000 consumers says not to: company
+(12) and occasion (9) rank far below cuisine (37) and deals (36) when choosing,
+and it states plainly that the food order is largely agnostic to company and
+occasion *unless the occasion is celebratory* - which the `celebrating` mood
+already covers. The question would have added friction for a signal that does not
+move the answer.
+
+The same survey is the clearest statement of why this app exists: on 4 out of 10
+occasions ordering in is chosen to lift spirits, and 82% of consumers order from
+five or fewer restaurants, largely on autopilot. The two-per-cuisine cap on the
+shortlist exists to push against exactly that.
+
 ## Where you are
 
 The browser gives a coordinate. `lib/cities.ts` holds the delivery cities with their

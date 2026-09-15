@@ -50,6 +50,11 @@ export interface Dish {
   localTo?: string[];
   /** verified Zomato dish-page slug; absent means Zomato has no page for it */
   zomatoDish?: string;
+  /**
+   * Permitted on a Hindu fasting day (vrat): no grain flour, no onion or
+   * garlic, rock salt rather than table salt. Absent means not suitable.
+   */
+  fastingSafe?: boolean;
   vector: Vector;
   /** shown on the result card, written as one plain sentence */
   note: string;

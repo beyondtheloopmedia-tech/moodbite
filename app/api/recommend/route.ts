@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     heat?: number;
     city?: string;
     interests?: unknown;
+    fasting?: unknown;
   };
   try {
     body = await req.json();
@@ -47,13 +48,15 @@ export async function POST(req: Request) {
   const interests = parseInterests(body.interests);
 
   const dishes = await getSource().list(city?.slug ?? "india");
-  const results = recommend(dishes, answers, slot, heat, 4, city, weather, interests);
+  const fasting = body.fasting === true;
+  const results = recommend(dishes, answers, slot, heat, 4, city, weather, interests, fasting);
 
   // An empty list is a valid answer, not an error. Results renders the copy.
   return NextResponse.json({
     slot,
     city: city ?? null,
     weatherNote: weatherBias(weather).note || null,
+    fasting,
     results: results.map((r) => ({ ...r, links: orderLinks(r.dish, city) })),
   });
 }

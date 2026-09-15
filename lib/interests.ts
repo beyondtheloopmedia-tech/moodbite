@@ -6,7 +6,8 @@ export type InterestId =
   | "light"
   | "adventurous"
   | "comfort"
-  | "rich";
+  | "rich"
+  | "thrifty";
 
 /**
  * Standing preferences, as opposed to how you happen to feel tonight.
@@ -57,6 +58,16 @@ export const INTERESTS: {
     blurb: "The usual, done well.",
     target: { comfort: 0.22, novelty: -0.15 },
     weights: { comfort: 0.5 },
+  },
+  {
+    id: "thrifty",
+    label: "Watching the spend",
+    blurb: "Lean towards the cheaper end of the menu.",
+    // Price is not a vector axis, it is a property of the dish. This entry
+    // carries no axis deltas; recommend() reads it directly and applies a
+    // price fit, the same way it handles portion fit.
+    target: {},
+    weights: {},
   },
   {
     id: "rich",

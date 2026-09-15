@@ -90,6 +90,9 @@ export default function MoodQuiz() {
   const { now, greeting, weather, weatherLine } = useAmbience(city);
   const { state: authState, email, userId, problem, sendLink, verifyCode, signOut } = useSession();
   const { interests, toggle: toggleInterest } = useProfile(userId);
+  // A fast is a fact about today, not a standing preference, so it is session
+  // state and is never persisted.
+  const [fasting, setFasting] = useState(false);
   const { logShown, logClicked } = useEventLog(userId);
 
   useEffect(() => setSlot(slotForHour(new Date().getHours())), []);
@@ -108,6 +111,7 @@ export default function MoodQuiz() {
           heat: h ?? undefined,
           city: city?.slug,
           interests,
+          fasting,
         }),
         });
         const data = await res.json();
@@ -120,14 +124,14 @@ export default function MoodQuiz() {
         setBusy(false);
       }
     },
-    [slot, city, interests],
+    [slot, city, interests, fasting],
   );
 
   useEffect(() => {
     if (!results) return;
     void fetchResults(answers as Answers, heat);
     // answers and heat are fixed by this point; the city is what changed
-  }, [city?.slug, interests]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [city?.slug, interests, fasting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!results) return;
@@ -186,6 +190,18 @@ export default function MoodQuiz() {
         </div>
         <div className="mt-6">
           <InterestPicker interests={interests} onToggle={toggleInterest} />
+          <button
+            type="button"
+            onClick={() => setFasting((v) => !v)}
+            aria-pressed={fasting}
+            className={`mt-3 border px-3 py-1.5 text-sm transition-colors ${
+              fasting
+                ? "border-ink bg-ink text-paper"
+                : "border-ink/30 text-ink hover:bg-sage-deep"
+            }`}
+          >
+            Fasting today
+          </button>
           <div className="mt-3">
             <AccountBar
               state={authState}
