@@ -7,24 +7,28 @@ import type { InterestId } from "@/lib/interests";
 import type { CoordsStatus } from "./useCity";
 
 type State =
-  | { kind: "asking" }
   | { kind: "loading" }
   | { kind: "done"; places: Place[]; from: "you" | "city" }
-  | { kind: "quiet"; message: string };
+  | { kind: "quiet"; message: string; offerLocate?: boolean };
 
 /**
  * Where to actually get the dish that was just recommended.
  *
- * Deliberately behind a button rather than loaded with the results. Every one
- * of these is a billed Google call, and firing four of them for a shortlist
- * nobody asked to see is both the expensive way and the rude way to do it. One
- * tap, one call, for the one dish someone is actually considering.
+ * Loads with the result, for the headline dish only. Never for the three under
+ * "also close": those are a list to glance at, and four billed calls to furnish
+ * a glance is not a trade worth making.
  *
- * Once it is open it stays true, though. Moving city, or the engine picking a
- * different dish underneath it, leaves the list on screen wrong rather than
- * merely stale - restaurants in the city you just left are not an answer to
- * anything - so the panel re-fetches itself. It never does that before the
- * first tap: somebody who never asked for this should never spend a call on it.
+ * It stays true afterwards. Moving city, or the engine picking a different dish
+ * underneath it, leaves the list on screen wrong rather than merely stale -
+ * restaurants in the city you just left are not an answer to anything - so it
+ * re-fetches, debounced, and never while a recommendation is still in flight.
+ *
+ * What it will not do is demand a location first. The permission dialog landing
+ * unbidden on the moment somebody finally gets their answer is a bad trade, so
+ * the first load uses whatever is already known - a coordinate if the opening
+ * screen got one, the city centroid otherwise - says which of the two it
+ * measured from, and offers to sharpen it. That offer is made once. Declining
+ * is an answer, and being asked twice is nagging.
  */
 export default function NearbyPlaces({
   dishId,
@@ -53,7 +57,6 @@ export default function NearbyPlaces({
   /** asks for a coordinate without rewriting the city the reader chose */
   onLocate: () => void;
 }) {
-  const [opened, setOpened] = useState(false);
   const [state, setState] = useState<State>({ kind: "loading" });
 
   // Primitives, so an unchanged city that arrives as a new object does not read
@@ -98,7 +101,11 @@ export default function NearbyPlaces({
       const data = await res.json();
 
       if (data.needsLocation) {
-        settle({ kind: "quiet", message: "Tell me where you are first and I will look again." });
+        settle({
+          kind: "quiet",
+          message: "Tell me where you are and I will find somewhere.",
+          offerLocate: true,
+        });
         return;
       }
       // The budget is a fixed monthly one, so running out is a normal state
@@ -143,27 +150,17 @@ export default function NearbyPlaces({
   const fetched = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!opened) return;
     // Changing city re-runs the recommendation too, so the dish underneath is
     // about to move. Waiting for that avoids paying for the intermediate state
     // where the city is new and the dish is still the old city's.
     if (busy) return;
-
-    // "Near me" is the one thing in this app that genuinely needs a point
-    // rather than a city, so this is the honest moment to ask for one - not
-    // the opening screen, where nothing yet depends on it. Asked once, and
-    // declining is fine: the city centroid answers, and the header below says
-    // that is what happened rather than claiming to be near anyone.
-    if (coordsStatus === "idle") {
-      setState({ kind: "asking" });
-      onLocate();
-      return;
-    }
+    // A sharpening is in flight and will change where we search. Buying a
+    // result we are about to throw away is the one thing worth waiting for.
     if (coordsStatus === "asking") return;
 
     if (fetched.current === signature) return;
 
-    // The tap itself should feel immediate. Everything after it is debounced,
+    // The first load should feel immediate. Everything after it is debounced,
     // because the city picker is a native select and the heat slider fires on
     // every step - without this, dragging either one buys a handful of calls.
     const delay = fetched.current === null ? 0 : 600;
@@ -172,29 +169,33 @@ export default function NearbyPlaces({
       void look();
     }, delay);
     return () => clearTimeout(timer);
-  }, [opened, busy, coordsStatus, signature, look, onLocate]);
+  }, [busy, coordsStatus, signature, look]);
 
-  if (!opened) {
-    return (
+  // Offered once, alongside results that were measured from a city centre
+  // rather than from the reader. Withdrawn the moment it is declined.
+  const sharpen =
+    coordsStatus === "asking" ? (
+      <p className="mt-3 text-xs text-ink-soft">Finding you.</p>
+    ) : coordsStatus === "idle" ? (
       <button
-        onClick={() => setOpened(true)}
-        className="font-display mt-3 border border-ink px-6 py-3 text-base transition-colors hover:bg-sage-deep"
+        onClick={onLocate}
+        className="mt-3 border-b border-ink pb-0.5 text-xs transition-colors hover:text-chilli"
       >
-        Who does this well near me?
+        Use my exact location
       </button>
-    );
-  }
-
-  if (state.kind === "asking") {
-    return <p className="mt-6 text-sm text-ink-soft">Finding you.</p>;
-  }
+    ) : null;
 
   if (state.kind === "loading") {
     return <p className="mt-6 text-sm text-ink-soft">Looking around{cityName ? ` ${cityName}` : ""}.</p>;
   }
 
   if (state.kind === "quiet") {
-    return <p className="mt-6 text-sm text-ink-soft">{state.message}</p>;
+    return (
+      <div className="mt-6">
+        <p className="text-sm text-ink-soft">{state.message}</p>
+        {state.offerLocate ? sharpen : null}
+      </div>
+    );
   }
 
   return (
@@ -249,6 +250,7 @@ export default function NearbyPlaces({
           </li>
         ))}
       </ul>
+      {state.from === "city" ? sharpen : null}
       {/* Required: Places content shown outside a Google map has to say where
           it came from. Not decorative, do not remove. */}
       <p className="mt-3 text-xs text-ink-soft">Places and ratings from Google Maps</p>

@@ -202,29 +202,38 @@ ranked by the same mood that chose the dish.
   in disguise — somebody who will not wait half an hour for delivery will not
   drive across town either — so it sets how hard proximity competes with
   quality. "Watching the spend" then pushes the price band down.
-- **One tap, one call.** Every lookup is billed, so nothing is fetched for a
-  shortlist nobody asked to see: only for the one dish being considered, and only
-  when asked.
-- **Open, it stays true.** Moving city, or the engine picking a different dish
+- **One result, one call.** It loads with the recommendation, for the headline
+  dish only — never for the three under "also close", because four billed calls
+  to furnish a glance is not a trade worth making.
+- **It stays true.** Moving city, or the engine picking a different dish
   underneath the panel, leaves the list on screen wrong rather than merely stale,
-  so it re-fetches. Never before the first tap, though: somebody who did not ask
-  for this never spends a call on it. Changes after that tap are debounced by
-  600ms and skipped while a recommendation is in flight, because the city picker
-  is a native select and the heat slider fires on every step — verified as five
-  rapid city changes costing one call, and an eight-step heat drag costing one.
+  so it re-fetches — debounced by 600ms and skipped while a recommendation is
+  still in flight, because the city picker is a native select and the heat slider
+  fires on every step. Verified as five rapid city changes costing one call, and
+  an eight-step heat drag costing one.
 - **The cap is a precondition, not a refinement.** Asking for ratings puts the
   call in Google's Enterprise tier: 1,000 free a month, then about $35 per 1,000.
-  `0009_places_quota.sql` holds a global monthly cap of 900 and a per-client
-  daily cap of 8, both server side because the anon key is public. Run out and
-  the panel says so and the order links carry on working. With no Supabase there
+  `0010_places_free_ceiling.sql` holds a global monthly cap of **990** — under
+  the free allowance on purpose, with ten calls of slack so the deliberate race
+  in `claim_places_call` can never be what produces a first invoice — and a
+  per-client daily cap of **5**. Both live server side because the anon key is
+  public. Since the panel loads by itself, the budget is spent by whoever
+  arrives rather than by whoever asks, which makes the scarce thing *how many
+  different people it reaches*; hence the low per-client number. Run out and the
+  panel says so while the order links carry on working. With no Supabase there
   is nowhere to count, so Google is never called at all.
-- **Location is asked for where it is actually needed.** "Near me" is the only
-  thing in the app that needs a point rather than a city, so the panel asks on
-  the first tap rather than the opening screen — and asks without rewriting the
-  city the reader chose. Before this, anyone returning with a city saved from
-  last visit was never located at all, and their distances were measured from
-  the city centre: Gachibowli is 16km from the middle of Hyderabad, so "2.2km
-  away" was 2.2km from nobody.
+- **990 a month is about 33 a day.** Past that the panel goes quiet for everyone
+  until the month turns. That is the deliberate consequence of staying inside
+  the free tier while loading automatically, and it is the number to watch in
+  the admin gauge before deciding whether this feature is worth paying for.
+- **It never demands a location.** A permission dialog landing unbidden on the
+  moment somebody finally gets their answer is a bad trade, so the panel uses
+  whatever is already known — a coordinate if the opening screen got one, the
+  city centroid otherwise — says which of the two it measured from, and offers
+  once to sharpen it. Declining is an answer; the offer is withdrawn rather than
+  repeated. `refineCoords` takes a coordinate without rewriting the city the
+  reader chose, because somebody who already said "Mumbai" should not have that
+  silently changed because a prompt finally got answered.
 - **A coordinate is only used where it is relevant.** More than 120km from the
   city being asked about and it is dropped for the centroid, because somebody in
   Delhi looking up Mumbai wants the middle of Mumbai, not a radius around
