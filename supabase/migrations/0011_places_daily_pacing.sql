@@ -127,6 +127,13 @@ grant execute on function public.claim_places_call(text) to anon, authenticated;
 
 -- The gauge gains today's allowance, so the admin page can say how much of
 -- today is left rather than only how much of the month.
+--
+-- Dropped first, not replaced. Adding a column to a RETURNS TABLE changes the
+-- function's row type, and `create or replace` refuses that outright:
+--   ERROR 42P13: cannot change return type of existing function
+-- The drop takes its grants with it, so they are reissued below.
+drop function if exists public.places_quota_status();
+
 create or replace function public.places_quota_status()
 returns table (
   used_this_month integer,
