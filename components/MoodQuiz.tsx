@@ -296,15 +296,23 @@ export default function MoodQuiz() {
             Fasting today
           </button>
         </div>
-        <button
-          onClick={() => {
-            if (!city && status === "idle") locate();
-            setStep(0);
-          }}
-          className="font-display mt-6 bg-ink px-8 py-4 text-lg text-paper transition-colors hover:bg-chilli"
-        >
-          Start
-        </button>
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <button
+            onClick={() => {
+              if (!city && status === "idle") locate();
+              setStep(0);
+            }}
+            className="font-display bg-ink px-8 py-4 text-lg text-paper transition-colors hover:bg-chilli"
+          >
+            Start
+          </button>
+          {/* The other half of the question. Ordering and cooking are different
+              decisions and this is the only place somebody is thinking about
+              dinner at all, so the fork belongs here rather than in a menu. */}
+          <a href="/cook" className="font-display border-b-2 border-ink pb-1 text-lg">
+            Or cook something
+          </a>
+        </div>
       </div>
     );
   }
