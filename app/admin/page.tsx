@@ -162,7 +162,7 @@ export default async function AdminPage() {
     // Unlisted included: the admin read policy in 0014 widens the public one.
     supabase
       .from("restaurants")
-      .select("id, slug, name, area, city, lat, lon, cuisines, price_band, veg_only, listed")
+      .select("id, slug, name, area, city, lat, lon, cuisines, price_band, veg_only, listed, google_place_id")
       .order("name")
       .limit(500),
   ]);

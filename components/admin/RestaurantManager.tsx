@@ -7,10 +7,13 @@ import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 import { CITIES } from "@/lib/cities";
 import { slugify } from "@/lib/posts";
 
+import type { PlaceCandidate } from "@/lib/places";
+
 export interface RestaurantRow {
   id: string;
   slug: string;
   name: string;
+  google_place_id?: string | null;
   area: string | null;
   city: string;
   lat: number | null;
@@ -33,6 +36,8 @@ const BLANK = {
   price_band: "",
   veg_only: false,
   listed: true,
+  // The join key to Google, and the ONLY thing from them this form keeps.
+  google_place_id: "",
 };
 
 /**
@@ -56,6 +61,48 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [finding, setFinding] = useState(false);
+  // Shown so a human can tell one branch of a chain from another. Held in
+  // component state only, never written anywhere: picking one saves its id and
+  // nothing else, because Google permit keeping the id and forbid the rest.
+  const [candidates, setCandidates] = useState<PlaceCandidate[] | null>(null);
+
+  async function findOnGoogle() {
+    if (!draft) return;
+    const name = draft.name.trim();
+    if (!name) {
+      setProblem("Give it a name first.");
+      return;
+    }
+    setFinding(true);
+    setProblem(null);
+    setCandidates(null);
+    try {
+      const res = await fetch("/api/places/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, city: draft.city }),
+      });
+      const data = await res.json();
+      if (data.capped) {
+        setProblem(
+          data.capped === "month"
+            ? "This month's Google lookups are used up."
+            : "Today's Google lookups are used up.",
+        );
+      } else if (data.off || !Array.isArray(data.candidates)) {
+        setProblem(data.error ?? "Could not reach Google just now.");
+      } else if (data.candidates.length === 0) {
+        setProblem(`Google found nothing for "${name}" in that city.`);
+      } else {
+        setCandidates(data.candidates as PlaceCandidate[]);
+      }
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : "The lookup did not complete.");
+    } finally {
+      setFinding(false);
+    }
+  }
 
   const locked = Boolean(draft?.id);
 
@@ -188,6 +235,7 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
       price_band: draft.price_band ? Number(draft.price_band) : null,
       veg_only: draft.veg_only,
       listed: draft.listed,
+      google_place_id: draft.google_place_id.trim() || null,
     };
 
     const { data, error } = await writeListing(fields, draft.id);
@@ -427,6 +475,52 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
           </div>
         </div>
 
+        <div className="mt-6 border-t border-ink/15 pt-5">
+          <p className="text-sm text-ink-soft">Google place id</p>
+          <p className="mt-1 text-xs text-ink-soft">
+            The join key. With one set, a Google search result for this restaurant
+            carries your hygiene score. It is the only thing we keep from Google —
+            the name, address and rating stay theirs.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <input
+              value={draft.google_place_id}
+              onChange={(e) => set("google_place_id", e.target.value)}
+              placeholder="ChIJ…"
+              className="min-w-0 flex-1 border-b border-ink/40 bg-transparent pb-1 font-mono text-xs focus:border-ink focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={findOnGoogle}
+              disabled={finding}
+              className="shrink-0 border border-ink px-4 py-2 text-sm transition-colors hover:bg-sage-deep disabled:opacity-50"
+            >
+              {finding ? "Searching" : "Find on Google"}
+            </button>
+          </div>
+
+          {candidates && (
+            <ul className="mt-3 border border-ink/20">
+              {candidates.map((c) => (
+                <li key={c.id} className="border-b border-ink/10 last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Only the id. The name and address were for your eyes.
+                      set("google_place_id", c.id);
+                      setCandidates(null);
+                    }}
+                    className="block w-full px-3 py-2.5 text-left transition-colors hover:bg-sage-deep"
+                  >
+                    <span className="block text-sm">{c.name}</span>
+                    <span className="block text-xs text-ink-soft">{c.address}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <label className="mt-5 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={draft.veg_only} onChange={(e) => set("veg_only", e.target.checked)} />
           <span>Pure veg</span>
@@ -487,6 +581,7 @@ export default function RestaurantManager({ initial }: { initial: RestaurantRow[
                     cuisines: r.cuisines.join(", "),
                     price_band: r.price_band?.toString() ?? "",
                     veg_only: r.veg_only, listed: r.listed,
+                    google_place_id: r.google_place_id ?? "",
                   });
                 }}
                 className="shrink-0 border-b border-ink pb-0.5 text-sm"

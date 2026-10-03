@@ -84,6 +84,26 @@ export interface Place {
   };
 }
 
+/**
+ * The mask for finding ONE known restaurant by name, which is a much cheaper
+ * question than finding somewhere to eat.
+ *
+ * id is Essentials, formattedAddress is Essentials, displayName is Pro - so
+ * this bills as Text Search Pro: 5,000 free calls a month against Enterprise's
+ * 1,000, and $32 rather than $35 per thousand beyond that. No rating, no price
+ * level, no opening hours, because an admin matching a listing to a place id
+ * does not need them and asking for them would quintuple the free allowance
+ * this burns.
+ */
+const LOOKUP_MASK = ["places.id", "places.displayName", "places.formattedAddress"].join(",");
+
+/** Just enough to tell two branches of the same chain apart. */
+export interface PlaceCandidate {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export interface Coords {
   lat: number;
   lon: number;
@@ -329,4 +349,61 @@ export async function searchPlaces(
 
   const data = (await res.json()) as { places?: RawPlace[] };
   return data.places ?? [];
+}
+
+/**
+ * Find a named restaurant, so a listing can be joined to its Google place id.
+ *
+ * Returns only what is needed to pick the right branch of a chain - the name
+ * and address exist to be LOOKED at, never saved. Google permit storing the id
+ * and forbid storing the rest, so the caller takes `id` and discards the
+ * object; see the comment on restaurants.google_place_id in 0014.
+ */
+export async function lookupPlace(
+  query: string,
+  center: Coords,
+  radiusKm = 25,
+): Promise<PlaceCandidate[] | null> {
+  if (!isPlacesConfigured) return null;
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": PLACES_KEY,
+      "X-Goog-FieldMask": LOOKUP_MASK,
+    },
+    body: JSON.stringify({
+      textQuery: query,
+      pageSize: 8,
+      regionCode: "IN",
+      languageCode: "en",
+      rankPreference: "RELEVANCE",
+      locationBias: {
+        circle: {
+          center: { latitude: center.lat, longitude: center.lon },
+          radius: Math.min(50_000, radiusKm * 1000),
+        },
+      },
+    }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    console.warn("moodbite: place lookup failed", res.status, await res.text().catch(() => ""));
+    return null;
+  }
+
+  const data = (await res.json()) as {
+    places?: { id?: string; displayName?: { text?: string }; formattedAddress?: string }[];
+  };
+  return (data.places ?? [])
+    .filter((p): p is { id: string; displayName?: { text?: string }; formattedAddress?: string } =>
+      typeof p.id === "string",
+    )
+    .map((p) => ({
+      id: p.id,
+      name: p.displayName?.text ?? "Unnamed",
+      address: p.formattedAddress ?? "",
+    }));
 }
