@@ -1,0 +1,335 @@
+{
+  "version": 1,
+  "jobId": "2c57e0b2-db6b-404f-9679-628ca67212a5",
+  "sessionId": "9e179329-6504-47de-bd1c-b944db139ce9",
+  "scopeKey": "f71e23f38caf5307f92f8a562e2223c7eb91feaee1921d2df273892217c03e02",
+  "revision": 57,
+  "createdAt": "2026-10-01T11:40:08.231Z",
+  "updatedAt": "2026-10-01T11:40:40.835Z",
+  "producerGraceExpiresAt": "2026-10-01T11:40:38.231Z",
+  "bestEffortDeadlineAt": "2026-10-01T11:41:29.231Z",
+  "producers": {
+    "core": {
+      "state": "sealed",
+      "intentKey": "2c612db42322b2e2eccda125fcd2a70c1587e52640135bd64dd37765565ce474",
+      "payloadDigest": "2c612db42322b2e2eccda125fcd2a70c1587e52640135bd64dd37765565ce474",
+      "sealedAt": "2026-10-01T11:40:38.689Z",
+      "sealedBy": "recovery"
+    },
+    "wiki": {
+      "state": "no-op",
+      "sealedAt": "2026-10-01T11:40:08.285Z",
+      "sealedBy": "wiki-producer"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "14f94dcb28a8c7be2b61fecce52e1d0bd47286d8b95caec83d3176ccb83678ce",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-01T11:40:38.360Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e0ff4abe-d2a4-4461-9344-b36dbe72b2ce",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:38.665Z"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "3f414abc9202b570f54b56bb7c55b95cecfbd9b8eaaa686e4c472e409dc93e33",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-10-01T11:40:08.285Z"
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "e1034c066fb8829e9b7223931869847eedfd17c54cd663256a4a4857d24f8075",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-01T11:40:38.766Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e85caa5a-bed8-44fe-b9e5-6e1d91d19bf7",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:39.014Z"
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "89cb425105f744b35816bf0085b851ac01d09fb1577b783cadd501dc8a52fb9d",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-01T11:40:39.079Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "434253ff-62e9-497c-b066-0035d9a8c461",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:39.441Z"
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "771a59bdbd7eba35e19eacaa4bc7b8035352ccc231e292f4115d2a9858ee65b2",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {}
+      },
+      "budgetMs": 9000,
+      "claimedAt": "2026-10-01T11:40:39.520Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "0098d69f-5afa-4347-a6df-3e2bf0e9a458",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:39.775Z"
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "a83e9aa86da29b91bd97947ff7b12866bbca606b564612d15a54cea5ba5ac682",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-01T11:40:39.838Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "e655b72c-7b09-4333-bea4-3ca86e30509c",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:40.111Z"
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "03307353171dcf4893f6c1658d819de6ed3c4e9b688766a2ed29b1423d052045",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-01T11:40:40.172Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "9da10a8f-51a7-4a32-a276-7d30e6f38a39",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:40.414Z"
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "completed",
+      "attempts": 1,
+      "idempotencyKey": "39aee896b63d98485aa0794522bab9ff4e0a45fdf5fb88747ea264c9bc4cd8c2",
+      "payload": {
+        "transcriptPath": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+        "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+        "reason": "other",
+        "input": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "transcript_path": "/Users/ravi/.claude/projects/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9.jsonl",
+          "cwd": "/Users/ravi/Downloads/00_Code/moodbite",
+          "scratchpad_dir": "/private/tmp/claude-501/-Users-ravi-Downloads-00-Code-moodbite/9e179329-6504-47de-bd1c-b944db139ce9/scratchpad",
+          "hook_event_name": "SessionEnd",
+          "reason": "other"
+        },
+        "initialTeamNames": [],
+        "openClawRouting": {},
+        "metrics": {
+          "session_id": "9e179329-6504-47de-bd1c-b944db139ce9",
+          "ended_at": "2026-10-01T11:40:38.514Z",
+          "reason": "other",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        }
+      },
+      "budgetMs": 2000,
+      "claimedAt": "2026-10-01T11:40:40.469Z",
+      "runner": {
+        "attempt": 1,
+        "runnerNonce": "d67a6063-4d43-4e8f-9dd2-962209fc3b1f",
+        "phase": "terminal",
+        "deadlineAt": "2026-10-01T11:40:48.233Z"
+      },
+      "lastOutcomeCode": "completed",
+      "completedAt": "2026-10-01T11:40:40.730Z"
+    }
+  },
+  "owner": null,
+  "phase": "complete",
+  "recoverableFailure": {
+    "reason": "actions-settled",
+    "releasedAt": "2026-10-01T11:40:40.790Z",
+    "ownerNonce": "01cc14eb-f95d-4588-b9e9-7d9fbc54ee2b"
+  },
+  "completion": {
+    "completedAt": "2026-10-01T11:40:40.790Z",
+    "terminalDigest": "1613fab26bd62fd6cabef4eaa0fc34f815e33393413d3618dbe7c9200103e048",
+    "terminalRevision": 56
+  }
+}

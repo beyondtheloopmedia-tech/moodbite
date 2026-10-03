@@ -280,6 +280,32 @@ export default function NearbyPlaces({
                   {p.openNow === true ? " · open now" : p.openNow === false ? " · closed now" : ""}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-ink-soft/80">{p.address}</p>
+                {/* The same restaurant, judged by us. Shown beside Google's
+                    number rather than instead of it: two independent opinions
+                    is the point, and the hygiene score is the one nobody else
+                    publishes. */}
+                {p.ours && (
+                  <a
+                    href={`/restaurants/${p.ours.slug}`}
+                    className="mt-1.5 inline-block border-l-2 border-chilli pl-2 text-xs text-ink"
+                  >
+                    {p.ours.reviews > 0 ? (
+                      <>
+                        <strong className="font-normal">
+                          Hygiene {p.ours.hygiene?.toFixed(1)}
+                        </strong>{" "}
+                        <span className="text-ink-soft">
+                          from {p.ours.reviews} honest review
+                          {p.ours.reviews === 1 ? "" : "s"} on Moodbite
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-soft">
+                        Listed on Moodbite — be the first to review it
+                      </span>
+                    )}
+                  </a>
+                )}
               </div>
               {p.mapsUri ? (
                 <a

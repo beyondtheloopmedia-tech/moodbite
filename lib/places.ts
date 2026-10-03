@@ -65,6 +65,23 @@ export interface Place {
   km: number;
   /** the rating after review count has been made to earn it; what we rank on */
   adjusted: number;
+  /**
+   * Set when this place is also one of ours.
+   *
+   * The join is on google_place_id and nothing else travels in that direction:
+   * Google's terms permit storing their ID and forbid storing their name,
+   * address or rating, so a listing is matched BY the id and then described
+   * entirely from our own row. If this is populated, the reader is being shown
+   * two independent opinions of the same restaurant rather than one opinion
+   * twice.
+   */
+  ours?: {
+    slug: string;
+    name: string;
+    hygiene: number | null;
+    overall: number | null;
+    reviews: number;
+  };
 }
 
 export interface Coords {

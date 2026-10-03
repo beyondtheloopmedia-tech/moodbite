@@ -9,6 +9,7 @@ import {
   rankPlaces,
   searchPlaces,
   type Coords,
+  type Place,
 } from "@/lib/places";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import type { Answers } from "@/lib/types";
@@ -46,6 +47,55 @@ function bucketFor(req: Request): string {
 
 /** Never trust a coordinate the client rounded; round it again here. */
 const coarse = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Mark the Google results we also list, and hang our own scores on them.
+ *
+ * Never fatal: a failure here costs the cross-reference, not the restaurants.
+ */
+async function attachOurListings(
+  supabase: NonNullable<Awaited<ReturnType<typeof getSupabaseServer>>>,
+  places: Place[],
+) {
+  const ids = places.map((p) => p.id);
+  if (ids.length === 0) return;
+
+  const { data: listings, error } = await supabase
+    .from("restaurants")
+    .select("id, slug, name, google_place_id")
+    .in("google_place_id", ids)
+    .eq("listed", true);
+
+  if (error || !listings?.length) {
+    if (error) console.warn("moodbite: could not cross-reference listings", error.message);
+    return;
+  }
+
+  // The view is keyed by restaurant id, so the scores come separately and are
+  // joined here; at this many rows that is free.
+  const { data: scores } = await supabase
+    .from("restaurant_scores")
+    .select("restaurant_id, hygiene, overall, reviews")
+    .in(
+      "restaurant_id",
+      listings.map((l) => l.id),
+    );
+  const scoreById = new Map((scores ?? []).map((s) => [s.restaurant_id, s]));
+
+  const byPlaceId = new Map(listings.map((l) => [l.google_place_id, l]));
+  for (const place of places) {
+    const mine = byPlaceId.get(place.id);
+    if (!mine) continue;
+    const s = scoreById.get(mine.id);
+    place.ours = {
+      slug: mine.slug,
+      name: mine.name,
+      hygiene: s ? Number(s.hygiene) : null,
+      overall: s ? Number(s.overall) : null,
+      reviews: s?.reviews ?? 0,
+    };
+  }
+}
 
 export async function POST(req: Request) {
   if (!isPlacesConfigured) {
