@@ -391,7 +391,6 @@ export function recommend(
     // queries by being the least opinionated thing on the menu - and offering
     // "vrat wale aloo" to someone who is not fasting reads as a mistake.
     .filter((d) => (fasting ? d.fastingSafe === true : d.fastingSafe !== true))
-    .filter((d) => d.slots.includes(slot))
     .filter((d) => d.eta <= maxEta)
     // Quantity is a statement, not a flavour. "Just a nibble" and "feed me
     // properly" are two steps apart, and something two steps from what was
@@ -412,6 +411,19 @@ export function recommend(
         0,
       );
       let score = 1 - distance / totalWeight;
+
+      // Wrong time of day. A penalty rather than a filter, and the distinction
+      // matters: diet is a rule the reader stated and portion is a quantity
+      // they asked for, but the slot is OUR OWN GUESS about when a dish
+      // belongs. Nobody said "not biryani at eleven". Treating our inference
+      // as a law was the single largest limit on variety in the whole engine -
+      // dishes carry 2.5 of 5 slots on average, so half the catalogue was
+      // invisible at any given hour and breakfast could see only 9 of 59.
+      //
+      // Set high enough that an off-hour dish has to be clearly better on
+      // everything else to appear, which keeps a feast off the breakfast list
+      // without pretending nobody has ever eaten dosa for dinner.
+      if (!dish.slots.includes(slot)) score -= OFF_SLOT;
 
       // Portion fit. Two steps off is filtered out above, so this decides
       // between an exact match and a near one only.
@@ -608,6 +620,9 @@ const LEARNED_CLAMP = 0.5;
  * Wednesday.
  */
 const FATIGUE = 0.35;
+
+/** How hard a dish is pushed down for being out of its usual hours. Swept. */
+const OFF_SLOT = 0.3;
 
 /** 1 when two dishes are identical in the six axes, 0 when maximally apart. */
 function similarity(a: Vector, b: Vector): number {
